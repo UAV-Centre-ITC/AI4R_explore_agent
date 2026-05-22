@@ -1,16 +1,16 @@
 ## AIAR RL practical assignment: 2D exploring robot
 
-This folder contains the runnable code for the practical assignment. The maintained path is PPO with Ray RLlib, Gymnasium, PyTorch, and Pygame.
+This folder contains the code for the 2D exploration practical. PPO is the main training script used in the exercise.
 
 ## Platform support
 
 | Platform | CPU training | NVIDIA GPU training | Notes |
 | --- | --- | --- | --- |
-| Windows 10/11 | Supported | Supported with NVIDIA GPU and working drivers | Recommended for supervisors using Anaconda Prompt. |
-| Ubuntu/Linux | Supported | Supported with NVIDIA GPU and working drivers | Recommended for research workstations and lab machines. |
-| macOS Intel or Apple Silicon | CPU-only best effort | Not supported through CUDA | Use CPU mode. Apple Metal/MPS is not configured for this assignment. |
+| Windows 10/11 | Supported | Supported with NVIDIA GPU and working drivers | Use Anaconda Prompt or Miniconda Prompt. |
+| Ubuntu/Linux | Supported | Supported with NVIDIA GPU and working drivers | Suitable for desktop or lab machines. |
+| macOS Intel or Apple Silicon | Supported in CPU mode | Not supported through CUDA | Apple Metal/MPS is not configured for this exercise. |
 
-The CPU environment is the safest default for teaching and reproducibility. Use the GPU environment only on Windows or Ubuntu/Linux machines where `nvidia-smi` works.
+Use the CPU environment unless an NVIDIA GPU is available and `nvidia-smi` works.
 
 ## Get the code
 
@@ -163,7 +163,7 @@ pip install tensorboard
 
 Then run training with `--num-gpus 0`.
 
-If Ray/RLlib installation fails on Apple Silicon, use a Windows or Ubuntu/Linux machine for the assignment. The assignment was prepared around Ray RLlib, PyTorch, and Pygame rather than native Apple Metal/MPS training.
+If Ray/RLlib installation fails on Apple Silicon, use a Windows or Ubuntu/Linux machine. This exercise uses Ray RLlib, PyTorch, and Pygame rather than native Apple Metal/MPS training.
 
 ## Quick environment check
 
