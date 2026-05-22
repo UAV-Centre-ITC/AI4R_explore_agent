@@ -1,0 +1,17 @@
+name: aiar-rl-explore
+channels:
+  - pytorch
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.10
+  - pip
+  - setuptools<81
+  - mkl<2024
+  - pytorch::pytorch=2.0.*
+  - pytorch::cpuonly
+  - pip:
+      - -e ./Explore-Agent
+      - tensorboard
+variables:
+  PYTHONNOUSERSITE: "1"

@@ -1,0 +1,21 @@
+name: aiar-rl-explore-gpu
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.10
+  - pip
+  - setuptools<81
+  - mkl<2024
+  - cmake
+  - lit
+  - pytorch::pytorch=2.0.*
+  - pytorch::pytorch-cuda=11.8
+  - pip:
+      - -e ./Explore-Agent
+      - tensorboard
+      - cmake
+variables:
+  PYTHONNOUSERSITE: "1"

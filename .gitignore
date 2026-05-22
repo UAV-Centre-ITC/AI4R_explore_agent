@@ -1,0 +1,50 @@
+# Python build/cache files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+build/
+dist/
+*.egg
+
+# Local Python/Conda environments
+.venv/
+venv/
+env/
+.env/
+conda-meta/
+miniconda*/
+.mamba*/
+.micromamba/
+
+# RLlib/Ray training outputs and checkpoints
+Exploring_agent_DRL/tmp/
+Exploring_agent_DRL/ray_results/
+ray_results/
+**/ray_results/
+**/checkpoint*/
+**/.is_checkpoint
+**/.tune_metadata
+**/rllib_checkpoint.json
+
+# Local logs and TensorBoard output
+*.log
+*.out
+*.err
+tensorboard/
+events.out.tfevents.*
+
+# Exported/generated experiment data
+exported_frames/
+exported_states/
+*.npy
+*.npz
+*.pkl
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
