@@ -2,34 +2,53 @@
 
 This folder contains the runnable code for the practical assignment. The maintained path is PPO with Ray RLlib, Gymnasium, PyTorch, and Pygame.
 
-## Windows-first setup with conda
+## Platform support
 
-These instructions are written for a Windows machine using Anaconda Prompt or Miniconda Prompt.
+| Platform | CPU training | NVIDIA GPU training | Notes |
+| --- | --- | --- | --- |
+| Windows 10/11 | Supported | Supported with NVIDIA GPU and working drivers | Recommended for supervisors using Anaconda Prompt. |
+| Ubuntu/Linux | Supported | Supported with NVIDIA GPU and working drivers | Recommended for research workstations and lab machines. |
+| macOS Intel or Apple Silicon | CPU-only best effort | Not supported through CUDA | Use CPU mode. Apple Metal/MPS is not configured for this assignment. |
 
-First open **Anaconda Prompt**, then change to this folder. For example:
+The CPU environment is the safest default for teaching and reproducibility. Use the GPU environment only on Windows or Ubuntu/Linux machines where `nvidia-smi` works.
 
-```bat
-cd C:\path\to\AIAR_RL_practical_assignment_2_2025\Exploring_agent_DRL
+## Get the code
+
+Clone the repository, then enter this assignment folder:
+
+```bash
+git clone https://github.com/UAV-Centre-ITC/AI4R_explore_agent.git
+cd AI4R_explore_agent/Exploring_agent_DRL
 ```
 
-If the repository path contains spaces, wrap it in quotes:
+If the repository path contains spaces, wrap the path in quotes when using `cd`.
 
-```bat
-cd "C:\path with spaces\AIAR_RL_practical_assignment_2_2025\Exploring_agent_DRL"
-```
+## Environment files
 
-## Environment choice
-
-Use one of the following environments:
+Two Conda environment files are provided:
 
 - CPU-only: `environment.yml`, environment name `aiar-rl-explore`
 - NVIDIA GPU: `environment-gpu.yml`, environment name `aiar-rl-explore-gpu`
 
-The CPU environment is the safest default for teaching and reproducibility. The GPU environment is useful for faster neural-network updates on machines with an NVIDIA GPU and working drivers.
+Both environments install the local `Explore-Agent` package in editable mode.
 
-## CPU-only conda setup
+## Windows setup with Conda
 
-Use this if the supervisor does not need GPU acceleration, or if CUDA/PyTorch GPU setup is not already working.
+Open **Anaconda Prompt** or **Miniconda Prompt**, then change to the assignment folder:
+
+```bat
+cd C:\path\to\AI4R_explore_agent\Exploring_agent_DRL
+```
+
+If the path contains spaces:
+
+```bat
+cd "C:\path with spaces\AI4R_explore_agent\Exploring_agent_DRL"
+```
+
+### Windows CPU-only setup
+
+Use this if CUDA is not needed or if the computer does not have an NVIDIA GPU:
 
 ```bat
 set PYTHONNOUSERSITE=1
@@ -37,7 +56,7 @@ conda env create -f environment.yml
 conda activate aiar-rl-explore
 ```
 
-If you already created the environment and only changed dependencies:
+If the environment already exists and the dependency file changed:
 
 ```bat
 set PYTHONNOUSERSITE=1
@@ -45,12 +64,17 @@ conda env update -f environment.yml --prune
 conda activate aiar-rl-explore
 ```
 
-## GPU conda setup
+### Windows NVIDIA GPU setup
 
-Use this only if the Windows machine has an NVIDIA GPU and `nvidia-smi` works in Anaconda Prompt:
+Use this only if the machine has an NVIDIA GPU and this command works:
 
 ```bat
 nvidia-smi
+```
+
+Create and activate the GPU environment:
+
+```bat
 set PYTHONNOUSERSITE=1
 conda env create -f environment-gpu.yml
 conda activate aiar-rl-explore-gpu
@@ -64,41 +88,136 @@ python -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.get_
 
 Only use `--num-gpus 1` after `torch.cuda.is_available()` prints `True`.
 
+## Ubuntu/Linux setup with Conda
+
+Open a terminal, then change to the assignment folder:
+
+```bash
+cd /path/to/AI4R_explore_agent/Exploring_agent_DRL
+```
+
+### Ubuntu/Linux CPU-only setup
+
+```bash
+export PYTHONNOUSERSITE=1
+conda env create -f environment.yml
+conda activate aiar-rl-explore
+```
+
+If the environment already exists and the dependency file changed:
+
+```bash
+export PYTHONNOUSERSITE=1
+conda env update -f environment.yml --prune
+conda activate aiar-rl-explore
+```
+
+### Ubuntu/Linux NVIDIA GPU setup
+
+Use this only if the machine has an NVIDIA GPU and this command works:
+
+```bash
+nvidia-smi
+```
+
+Create and activate the GPU environment:
+
+```bash
+export PYTHONNOUSERSITE=1
+conda env create -f environment-gpu.yml
+conda activate aiar-rl-explore-gpu
+```
+
+Verify CUDA before training:
+
+```bash
+python -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'no CUDA')"
+```
+
+Only use `--num-gpus 1` after `torch.cuda.is_available()` prints `True`.
+
+For remote/headless Ubuntu machines, training can run without a display because the training script uses `gui=False`. Rollout and manual driving need a graphical display for Pygame.
+
+## macOS setup with Conda
+
+Use macOS in CPU-only mode. The provided CUDA GPU environment is not for macOS.
+
+First try the standard CPU environment:
+
+```bash
+export PYTHONNOUSERSITE=1
+conda env create -f environment.yml
+conda activate aiar-rl-explore
+```
+
+If Conda cannot solve the environment on macOS, create a CPU environment manually:
+
+```bash
+export PYTHONNOUSERSITE=1
+conda create -n aiar-rl-explore python=3.10 pip "setuptools<81" -c conda-forge
+conda activate aiar-rl-explore
+conda install pytorch=2.0 -c pytorch
+pip install -e ./Explore-Agent
+pip install tensorboard
+```
+
+Then run training with `--num-gpus 0`.
+
+If Ray/RLlib installation fails on Apple Silicon, use a Windows or Ubuntu/Linux machine for the assignment. The assignment was prepared around Ray RLlib, PyTorch, and Pygame rather than native Apple Metal/MPS training.
+
 ## Quick environment check
 
-Run this after activating either `aiar-rl-explore` or `aiar-rl-explore-gpu`:
+Run this after activating either `aiar-rl-explore` or `aiar-rl-explore-gpu`.
+
+Windows:
 
 ```bat
 python -c "from explore_agent.envs.exploring_gym import ExploreDrone; env = ExploreDrone({'gui': False, 'env_name': 'playground', 'reward_mode': 'continuous', 'max_steps': 5}); obs, _ = env.reset(); print('observation shape:', obs.shape); obs, reward, terminated, truncated, info = env.step([0.0, 0.0]); print(round(float(reward), 4), terminated, truncated, info)"
 ```
 
+Ubuntu/Linux/macOS:
+
+```bash
+python -c "from explore_agent.envs.exploring_gym import ExploreDrone; env = ExploreDrone({'gui': False, 'env_name': 'playground', 'reward_mode': 'continuous', 'max_steps': 5}); obs, _ = env.reset(); print('observation shape:', obs.shape); obs, reward, terminated, truncated, info = env.step([0.0, 0.0]); print(round(float(reward), 4), terminated, truncated, info)"
+```
+
 ## Manual driving
 
-Use this first to confirm Pygame rendering and the map work:
+Use this first to confirm Pygame rendering and the map work.
+
+Windows:
 
 ```bat
 python Explore-Agent\explore_agent\envs\start_human.py
+```
+
+Ubuntu/Linux/macOS:
+
+```bash
+python Explore-Agent/explore_agent/envs/start_human.py
 ```
 
 Use the arrow keys to drive. Press `r` to reset.
 
 ## Train PPO
 
+Run these commands from `Exploring_agent_DRL` after activating the Conda environment.
+
 CPU-only short run:
 
-```bat
+```bash
 python Explore_PPO_agent_training.py --iterations 20 --num-workers 1 --num-gpus 0
 ```
 
 CPU-only longer run:
 
-```bat
+```bash
 python Explore_PPO_agent_training.py --iterations 500 --num-workers 2 --num-gpus 0
 ```
 
-GPU training run, only from the `aiar-rl-explore-gpu` environment:
+GPU training run, only from the `aiar-rl-explore-gpu` environment on Windows or Ubuntu/Linux:
 
-```bat
+```bash
 python Explore_PPO_agent_training.py --iterations 500 --num-workers 2 --num-gpus 1
 ```
 
@@ -110,7 +229,7 @@ tmp/ppo/checkpoint_best
 
 ## Test a trained PPO checkpoint
 
-```bat
+```bash
 python explore_agent_rollout.py --checkpoint tmp/ppo/checkpoint_best
 ```
 
@@ -120,10 +239,18 @@ Ray uses a short temporary directory under the system temp folder by default. Th
 
 ## Visualize training metrics
 
-Ray writes training logs under the user home `ray_results` folder by default. On Windows:
+Ray writes training logs under the user home `ray_results` folder by default.
+
+Windows:
 
 ```bat
 python -m tensorboard.main --logdir %USERPROFILE%\ray_results
+```
+
+Ubuntu/Linux/macOS:
+
+```bash
+python -m tensorboard.main --logdir ~/ray_results
 ```
 
 Open the TensorBoard URL printed in the terminal.

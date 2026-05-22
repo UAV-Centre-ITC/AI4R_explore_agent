@@ -4,6 +4,13 @@
 
 Prepared the assignment repository so it can be cloned and run on another computer without carrying local checkpoints, build artifacts, or machine-specific setup.
 
+### Platform documentation update
+
+- Reorganized `Exploring_agent_DRL/README.md` into separate Windows, Ubuntu/Linux, and macOS setup sections.
+- Documented which platforms support CPU training and which support NVIDIA GPU training.
+- Added macOS CPU-only guidance and noted that the CUDA GPU environment is not applicable to macOS.
+- Added platform-specific command examples for path handling, environment setup, manual driving, and TensorBoard.
+
 ### Setup and environment changes
 
 - Added `Exploring_agent_DRL/environment.yml` for CPU-only Conda setup.
