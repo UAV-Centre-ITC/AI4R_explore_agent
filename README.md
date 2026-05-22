@@ -4,8 +4,6 @@ This repository contains the code for the AI for Autonomous Robotics practical o
 
 The exercise uses a custom Gymnasium environment, Ray RLlib, PyTorch, and Pygame. The provided training script uses PPO, but students may experiment with other RLlib algorithms.
 
-![2D exploration environment](Exploring_agent_DRL/imgs/space_wp3.jpg)
-
 ## Assignment Overview
 
 The goal is to train a simulated mobile robot to explore the `playground` map while avoiding walls and obstacles. A successful policy should drive around the environment and complete a full lap of the map layout.
