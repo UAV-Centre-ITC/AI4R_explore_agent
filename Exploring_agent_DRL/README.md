@@ -235,6 +235,12 @@ python explore_agent_rollout.py --checkpoint tmp/ppo/checkpoint_best
 
 The rollout opens the Pygame window and prints the cumulative reward when the episode ends.
 
+For a terminal-only check without opening a Pygame window:
+
+```bash
+python explore_agent_rollout.py --checkpoint tmp/ppo/checkpoint_best --steps 20 --sleep 0 --no-gui
+```
+
 Ray uses a short temporary directory under the system temp folder by default. This avoids path-length issues when the repository is stored in a deeply nested directory.
 
 ## Visualize training metrics

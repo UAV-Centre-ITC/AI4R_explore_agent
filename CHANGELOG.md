@@ -44,6 +44,8 @@ Prepared the assignment repository so it can be cloned and run on another comput
 - Added a default checkpoint path of `tmp/ppo/checkpoint_best`.
 - Added checkpoint path resolution for RLlib checkpoint directories.
 - Added configurable rollout steps, sleep time, environment name, reward mode, and Ray temporary directory.
+- Registered the custom `ExploreAgent-v0` environment before restoring RLlib checkpoints so `Algorithm.from_checkpoint(...)` can rebuild the saved policy.
+- Added `--no-gui` for terminal-only checkpoint tests on headless or remote machines.
 
 ### Explore-Agent package changes
 

@@ -7,10 +7,13 @@ from time import sleep
 import ray
 from ray.rllib.algorithms.algorithm import Algorithm
 from ray._private import resource_spec
+from ray.tune.registry import register_env
 
 from explore_agent.envs.exploring_gym import ExploreDrone
 
 os.environ["RAY_USE_CUSTOM_LOGGING"] = "0"
+
+SELECT_ENV = "ExploreAgent-v0"
 
 
 # Monkey patch to skip nvidia-smi check
@@ -26,6 +29,7 @@ def parse_args():
     parser.add_argument("--env-name", default="playground", choices=["default", "empty", "level2", "random", "playground"])
     parser.add_argument("--reward-mode", default="continuous", choices=["dynamic", "continuous", "static"])
     parser.add_argument("--ray-temp-dir", default=str(Path(tempfile.gettempdir()) / "aiar_ray"))
+    parser.add_argument("--no-gui", action="store_true", help="Run rollout without opening the Pygame window.")
     return parser.parse_args()
 
 
@@ -45,6 +49,14 @@ def resolve_checkpoint_path(checkpoint):
     return checkpoint
 
 
+def make_env_config(args, gui):
+    return {
+        "env_name": args.env_name,
+        "reward_mode": args.reward_mode,
+        "gui": gui,
+    }
+
+
 def main():
     args = parse_args()
     checkpoint = resolve_checkpoint_path(Path(args.checkpoint))
@@ -60,8 +72,9 @@ def main():
         _temp_dir=str(Path(args.ray_temp_dir).resolve()),
     )
 
+    register_env(SELECT_ENV, lambda config: ExploreDrone(make_env_config(args, gui=False)))
     agent = Algorithm.from_checkpoint(str(checkpoint))
-    env = ExploreDrone({"env_name": args.env_name, "reward_mode": args.reward_mode, "gui": True})
+    env = ExploreDrone(make_env_config(args, gui=not args.no_gui))
     state, _ = env.reset()
 
     total_reward = 0.0
@@ -70,7 +83,8 @@ def main():
             action = agent.compute_single_action(state, explore=False)
             state, reward, terminated, truncated, info = env.step(action)
             total_reward += reward
-            env.render()
+            if not args.no_gui:
+                env.render()
 
             if terminated or truncated:
                 reason = "collision" if terminated else "time limit"
