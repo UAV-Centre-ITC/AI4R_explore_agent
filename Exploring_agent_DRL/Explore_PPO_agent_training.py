@@ -8,7 +8,11 @@ import ray
 import torch
 
 from ray.tune.registry import register_env
-from explore_agent.envs.exploring_gym import ExploreDrone
+from explore_agent.envs.exploring_gym import (
+    COVERAGE_HOVER_PENALTY,
+    COVERAGE_PROGRESS_PENALTY,
+    ExploreDrone,
+)
 from ray.rllib.algorithms.ppo.ppo import PPOConfig
 from ray._private import resource_spec
 
@@ -73,7 +77,12 @@ def print_training_context(args, task_limits):
             f"{task_limits['checkpoint_reward']:.2f} reward = "
             f"{task_limits['max_reward']:.2f} max reward"
         )
-        print("  exploration shaping: penalties for hovering, bounded wall contact, and not approaching visible checkpoints")
+        print(
+            "  exploration shaping: "
+            f"-{COVERAGE_HOVER_PENALTY:.3f}/step for hovering, "
+            f"-{COVERAGE_PROGRESS_PENALTY:.3f}/step for no progress, "
+            "bounded wall-contact penalty"
+        )
 
     print("\nLog columns")
     print("  iter: completed PPO training iteration")
