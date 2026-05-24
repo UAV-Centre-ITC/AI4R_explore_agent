@@ -23,7 +23,7 @@ def parse_args():
     parser.add_argument("--iterations", type=int, default=500)
     parser.add_argument("--save-interval", type=int, default=10)
     parser.add_argument("--warmup-iterations", type=int, default=50)
-    parser.add_argument("--num-workers", type=int, default=2)
+    parser.add_argument("--num-workers", type=int, default=0)
     parser.add_argument("--num-gpus", type=float, default=0)
     parser.add_argument("--env-name", default="rooms", choices=["default", "empty", "level2", "random", "playground", "rooms"])
     parser.add_argument("--reward-mode", default="coverage", choices=["dynamic", "continuous", "static", "coverage"])
@@ -31,6 +31,9 @@ def parse_args():
     parser.add_argument("--checkpoint-dir", default="tmp/ppo_rooms")
     parser.add_argument("--ray-temp-dir", default=str(Path(tempfile.gettempdir()) / "aiar_ray"))
     parser.add_argument("--entropy-coeff", type=float, default=0.01)
+    parser.add_argument("--train-batch-size", type=int, default=2000)
+    parser.add_argument("--sgd-minibatch-size", type=int, default=256)
+    parser.add_argument("--num-sgd-iter", type=int, default=10)
     return parser.parse_args()
 
 
@@ -58,6 +61,11 @@ def print_training_context(args, task_limits):
     print(f"  rollout workers: {args.num_workers}")
     print(f"  requested GPUs: {args.num_gpus}")
     print(f"  entropy coefficient: {args.entropy_coeff}")
+    print(
+        "  PPO update: "
+        f"train batch {args.train_batch_size}, minibatch {args.sgd_minibatch_size}, "
+        f"SGD passes {args.num_sgd_iter}"
+    )
     if task_limits["max_reward"] is not None:
         print(
             "  coverage task: "
@@ -65,7 +73,7 @@ def print_training_context(args, task_limits):
             f"{task_limits['checkpoint_reward']:.2f} reward = "
             f"{task_limits['max_reward']:.2f} max reward"
         )
-        print("  exploration shaping: small penalty for hovering in already visited map cells")
+        print("  exploration shaping: small penalties for hovering, wall contact, and not approaching visible checkpoints")
 
     print("\nLog columns")
     print("  iter: completed PPO training iteration")
@@ -139,7 +147,12 @@ def main():
         PPOConfig()
         .resources(num_gpus=args.num_gpus)
         .rollouts(num_rollout_workers=args.num_workers)
-        .training(entropy_coeff=args.entropy_coeff)
+        .training(
+            entropy_coeff=args.entropy_coeff,
+            train_batch_size=args.train_batch_size,
+            sgd_minibatch_size=args.sgd_minibatch_size,
+            num_sgd_iter=args.num_sgd_iter,
+        )
         .framework("torch")
     )
 

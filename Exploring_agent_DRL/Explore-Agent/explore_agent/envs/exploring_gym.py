@@ -14,10 +14,14 @@ COLOR_THRUST = (35, 180, 80)
 COLOR_BRAKE = (45, 120, 230)
 COLOR_TURN = (245, 170, 35)
 
-COVERAGE_GOAL_SLOTS = 3
+COVERAGE_GOAL_SLOTS = 5
 COVERAGE_CELL_SIZE = 80
 COVERAGE_HOVER_SPEED_THRESHOLD = 0.25
 COVERAGE_HOVER_PENALTY = 0.002
+COVERAGE_COLLISION_PENALTY = 0.02
+COVERAGE_PROGRESS_PENALTY = 0.001
+COVERAGE_PROGRESS_MARGIN = 0.5
+CHECKPOINT_HIT_RADIUS = 25
 
 
 
@@ -454,7 +458,8 @@ class Environment:
 
 
 class Drone:
-    VEL_MAX = 15  # not used
+    VEL_MAX = 12
+    DRAG = 0.98
     # ROT_VEL = 1.28
     # ROT_VEL = 0.64
     # ROT_VEL = 0.32
@@ -496,6 +501,7 @@ class Drone:
         self.action_state = 0
         self.last_accel_cmd = 0.0
         self.last_turn_cmd = 0.0
+        self.collision_step = False
         self.goal_vector_last = None
         self.coverage_visited = np.zeros(self.env.n_goals, dtype=bool)
         self.coverage_count = 0
@@ -508,6 +514,11 @@ class Drone:
         }
         self.coverage_hover_penalty_total = 0.0
         self.coverage_last_hover_penalty = 0.0
+        self.coverage_collision_penalty_total = 0.0
+        self.coverage_progress_penalty_total = 0.0
+        self.coverage_last_progress_penalty = 0.0
+        self.coverage_target_index_previous = None
+        self.coverage_target_distance_previous = None
         self.update_echo_vectors()
         self.update_goal_vectors()
         self.check_collision_echo()
@@ -556,13 +567,23 @@ class Drone:
         if new_hits == 0 and self.coverage_last_hover_penalty > 0:
             self.reward_step -= self.coverage_last_hover_penalty
             self.coverage_hover_penalty_total += self.coverage_last_hover_penalty
-        if self.game.done_reason == "collision":
-            self.reward_step -= 1.0
-        self.reward_total = float(self.coverage_count) * self.COVERAGE_REWARD - self.coverage_hover_penalty_total
+        if new_hits == 0 and self.coverage_last_progress_penalty > 0:
+            self.reward_step -= self.coverage_last_progress_penalty
+            self.coverage_progress_penalty_total += self.coverage_last_progress_penalty
+        if self.collision_step:
+            self.reward_step -= COVERAGE_COLLISION_PENALTY
+            self.coverage_collision_penalty_total += COVERAGE_COLLISION_PENALTY
+        self.reward_total = (
+            float(self.coverage_count) * self.COVERAGE_REWARD
+            - self.coverage_hover_penalty_total
+            - self.coverage_collision_penalty_total
+            - self.coverage_progress_penalty_total
+        )
         self.coverage_count_previous = self.coverage_count
 
     def update_coverage_exploration_state(self):
         self.coverage_last_hover_penalty = 0.0
+        self.coverage_last_progress_penalty = 0.0
         if self.game.reward_mode != 'coverage':
             return
         cell = (int(self.x // COVERAGE_CELL_SIZE), int(self.y // COVERAGE_CELL_SIZE))
@@ -574,19 +595,42 @@ class Drone:
         if speed < COVERAGE_HOVER_SPEED_THRESHOLD:
             self.coverage_last_hover_penalty = COVERAGE_HOVER_PENALTY
 
-    def get_nearest_unvisited_goal(self):
+        candidates = self.get_unvisited_goal_candidates()
+        if not candidates:
+            self.coverage_target_index_previous = None
+            self.coverage_target_distance_previous = None
+            return
+
+        _, distance, target_index, _, visible = candidates[0]
+        if (
+            visible
+            and self.coverage_target_index_previous == target_index
+            and self.coverage_target_distance_previous is not None
+            and distance > self.coverage_target_distance_previous - COVERAGE_PROGRESS_MARGIN
+        ):
+            self.coverage_last_progress_penalty = COVERAGE_PROGRESS_PENALTY
+        self.coverage_target_index_previous = target_index
+        self.coverage_target_distance_previous = distance
+
+    def get_unvisited_goal_candidates(self):
         unvisited = np.flatnonzero(~self.coverage_visited)
-        if len(unvisited) == 0:
-            return 0
-        distances = [
-            point_to_line_segment_distance(self.x, self.y, *self.env.get_goal_line(i))
-            for i in unvisited
-        ]
-        return int(unvisited[int(np.argmin(distances))])
+        candidates = []
+        for goal_index in unvisited:
+            goal = self.env.get_goal_line(goal_index)
+            px, py = closest_point_on_line_segment(self.x, self.y, *goal)
+            dx, dy = px - self.x, py - self.y
+            distance = np.sqrt(dx ** 2 + dy ** 2)
+            goal_ang = np.arctan2(-dy, dx)
+            goal_ang_diff = wrap_angle(self.ang - goal_ang)
+            visible = self.is_goal_visible((px, py))
+            candidates.append((not visible, distance, int(goal_index), goal_ang_diff, visible))
+        candidates.sort(key=lambda item: (item[0], item[1]))
+        return candidates
 
     def update_goal_vectors(self):
         if self.game.reward_mode == 'coverage':
-            self.level = self.get_nearest_unvisited_goal()
+            candidates = self.get_unvisited_goal_candidates()
+            self.level = candidates[0][2] if candidates else 0
             self.goal_vector_next = self.env.get_goal_line(self.level)
             self.goal_vector_last = self.goal_vector_next
             return
@@ -607,21 +651,8 @@ class Drone:
 
     def update_coverage_goal_features(self):
         features = np.zeros(COVERAGE_GOAL_SLOTS * 3, dtype=np.float32)
-        unvisited = np.flatnonzero(~self.coverage_visited)
-        candidates = []
-
-        for goal_index in unvisited:
-            goal = self.env.get_goal_line(goal_index)
-            px, py = closest_point_on_line_segment(self.x, self.y, *goal)
-            dx, dy = px - self.x, py - self.y
-            distance = np.sqrt(dx ** 2 + dy ** 2)
-            goal_ang = np.arctan2(-dy, dx)
-            goal_ang_diff = wrap_angle(self.ang - goal_ang)
-            visible = self.is_goal_visible((px, py))
-            candidates.append((not visible, distance, goal_ang_diff, visible))
-
-        candidates.sort(key=lambda item: (item[0], item[1]))
-        for slot, (_, distance, goal_ang_diff, visible) in enumerate(candidates[:COVERAGE_GOAL_SLOTS]):
+        candidates = self.get_unvisited_goal_candidates()
+        for slot, (_, distance, _, goal_ang_diff, visible) in enumerate(candidates[:COVERAGE_GOAL_SLOTS]):
             base = slot * 3
             features[base] = np.interp(goal_ang_diff, [-np.pi, np.pi], [-1, 1])
             features[base + 1] = np.interp(min(distance, 700), [0, 700], [-1, 1])
@@ -666,16 +697,14 @@ class Drone:
         if accelerate < 0:
             accelerate = accelerate * 0.5
 
-        self.vel_x = self.vel_x + accelerate * np.cos(self.ang)
-        self.vel_y = self.vel_y - accelerate * np.sin(self.ang)
+        self.vel_x = self.DRAG * (self.vel_x + self.ACCELERATION * accelerate * np.cos(self.ang))
+        self.vel_y = self.DRAG * (self.vel_y - self.ACCELERATION * accelerate * np.sin(self.ang))
 
-
-        # # * cap max speed
-        # if np.sqrt(self.vel_x**2 + self.vel_y**2) > self.VEL_MAX:
-        #     self.vel_x = self.VEL_MAX * self.vel_x / \
-        #         (np.abs(self.vel_x)+np.abs(self.vel_y))
-        #     self.vel_y = self.VEL_MAX * self.vel_y / \
-        #         (np.abs(self.vel_x)+np.abs(self.vel_y))
+        speed = np.sqrt(self.vel_x ** 2 + self.vel_y ** 2)
+        if speed > self.VEL_MAX:
+            scale = self.VEL_MAX / speed
+            self.vel_x *= scale
+            self.vel_y *= scale
 
     def update_observations(self):
         # ─── OBSERVATION 8: VELOCITY ─────────────────────────────────────
@@ -745,6 +774,7 @@ class Drone:
         # displacement
         d_x, d_y = self.vel_x, self.vel_y
         x_from, y_from = self.x, self.y
+        self.x_previous, self.y_previous = x_from, y_from
 
         # ─── CENTERED MODE ───────────────────────────────────────────────
         if self.game.camera_mode == 'centered':
@@ -773,7 +803,13 @@ class Drone:
         if self.game.reward_mode == 'coverage':
             found_new_checkpoint = False
             for i, goal in enumerate(self.env.goals):
-                if not self.coverage_visited[i] and line_intersect(*self.movement_vector, *goal) is not None:
+                if self.coverage_visited[i]:
+                    continue
+                hit_goal = (
+                    line_intersect(*self.movement_vector, *goal) is not None
+                    or distance_to_line_segment(self.x, self.y, *goal, d=CHECKPOINT_HIT_RADIUS)
+                )
+                if hit_goal:
                     self.coverage_visited[i] = True
                     self.coverage_count += 1
                     found_new_checkpoint = True
@@ -801,10 +837,17 @@ class Drone:
             self.update_goal_vectors()
 
     def check_collision_env(self):
+        self.collision_step = False
         for line in self.env.level_collision_vectors:
             result = line_intersect(*self.movement_vector, *line)
             if result is not None:
-                self.game.set_done(reason="collision")
+                if self.game.reward_mode == 'coverage' and not self.game.coverage_collision_ends_episode:
+                    self.collision_step = True
+                    self.x, self.y = self.x_previous, self.y_previous
+                    self.vel_x, self.vel_y = 0.0, 0.0
+                    self.movement_vector = [self.x, self.y, self.x, self.y]
+                else:
+                    self.game.set_done(reason="collision")
                 break
 
     def check_collision_echo(self):
@@ -896,6 +939,7 @@ class ExploreDrone(gym.Env):
             'rule_collision': [True, False],
             'rule_max_steps': [True, False],
             'rule_keep_on_screen': [False, True],
+            'coverage_collision_ends_episode': [False, True],
             'gui_echo_distances': [False, True],
             'gui_frames_remaining': [True, False],
             'gui_goal_ang': [False, True],
@@ -949,6 +993,7 @@ class ExploreDrone(gym.Env):
         self.rule_collision = assign_dict['rule_collision']
         self.rule_max_steps = assign_dict['rule_max_steps']
         self.rule_keep_on_screen = assign_dict['rule_keep_on_screen']
+        self.coverage_collision_ends_episode = assign_dict['coverage_collision_ends_episode']
         self.gui = assign_dict['gui']
         self.gui_echo_distances = assign_dict['gui_echo_distances']
         self.gui_frames_remaining = assign_dict['gui_frames_remaining']
@@ -1112,6 +1157,11 @@ class ExploreDrone(gym.Env):
                 "max_reward": float(self.env.n_goals * self.drone.COVERAGE_REWARD),
                 "hover_penalty": float(self.drone.coverage_hover_penalty_total),
                 "last_hover_penalty": float(self.drone.coverage_last_hover_penalty),
+                "collision": bool(self.drone.collision_step),
+                "collision_penalty": float(COVERAGE_COLLISION_PENALTY),
+                "collision_penalty_total": float(self.drone.coverage_collision_penalty_total),
+                "progress_penalty": float(self.drone.coverage_progress_penalty_total),
+                "last_progress_penalty": float(self.drone.coverage_last_progress_penalty),
             })
 
         # ─── RESET ITERATION VARIABLES ───────────────────────────────────

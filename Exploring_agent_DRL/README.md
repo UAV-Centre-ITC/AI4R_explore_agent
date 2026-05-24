@@ -203,24 +203,24 @@ Use the arrow keys to drive. Press `r` to reset.
 
 Run these commands from `Exploring_agent_DRL` after activating the Conda environment.
 
-The default rooms task uses a coverage observation with several nearby unvisited checkpoints, not only one next checkpoint. PPO is also run with a small entropy coefficient by default, and the environment gives a tiny penalty when the robot hovers in an already visited coarse map cell. These two changes make the task behave more like exploration than the older lap-following example.
+The default rooms task uses a coverage observation with several nearby unvisited checkpoints, not only one next checkpoint. PPO is also run with a small entropy coefficient by default, and the environment gives tiny penalties for hovering, wall contact, and not approaching a visible unvisited checkpoint. These changes make the task behave more like exploration than the older lap-following example.
 
 CPU-only short run:
 
 ```bash
-python Explore_PPO_agent_training.py --iterations 20 --num-workers 1 --num-gpus 0 --env-name rooms --reward-mode coverage --max-steps 400
+python Explore_PPO_agent_training.py --iterations 20 --num-workers 0 --num-gpus 0 --env-name rooms --reward-mode coverage --max-steps 400
 ```
 
 CPU-only longer run:
 
 ```bash
-python Explore_PPO_agent_training.py --iterations 500 --num-workers 2 --num-gpus 0 --env-name rooms --reward-mode coverage --max-steps 400
+python Explore_PPO_agent_training.py --iterations 500 --num-workers 0 --num-gpus 0 --env-name rooms --reward-mode coverage --max-steps 400
 ```
 
 GPU training run, only from the `aiar-rl-explore-gpu` environment on Windows or Ubuntu/Linux:
 
 ```bash
-python Explore_PPO_agent_training.py --iterations 500 --num-workers 2 --num-gpus 1 --env-name rooms --reward-mode coverage --max-steps 400
+python Explore_PPO_agent_training.py --iterations 500 --num-workers 0 --num-gpus 1 --env-name rooms --reward-mode coverage --max-steps 400
 ```
 
 Checkpoints are written to `tmp/ppo_rooms/`. The best checkpoint is saved at:
@@ -235,7 +235,7 @@ tmp/ppo_rooms/checkpoint_best
 python explore_agent_rollout.py --checkpoint tmp/ppo_rooms/checkpoint_best --env-name rooms --reward-mode coverage --max-steps 400 --gui
 ```
 
-The rollout opens the Pygame window and prints the cumulative reward, checkpoint coverage, checkpoint reward maximum, and accumulated hover penalty when the episode ends. The default `rooms` map has 20 checkpoints worth `0.5` each, so the checkpoint reward maximum is `10.0`. Walls are black, unvisited checkpoints are red, visited checkpoints turn green, and yellow rays show the robot's distance sensors. Green/blue motion marks show acceleration or braking, and orange arcs show turn commands.
+The rollout opens the Pygame window and prints the cumulative reward, checkpoint coverage, checkpoint reward maximum, and accumulated shaping penalties when the episode ends. The default `rooms` map has 20 checkpoints worth `0.5` each, so the checkpoint reward maximum is `10.0`. Walls are black, unvisited checkpoints are red, visited checkpoints turn green, and yellow rays show the robot's distance sensors. Green/blue motion marks show acceleration or braking, and orange arcs show turn commands.
 
 For a terminal-only check without opening a Pygame window:
 
@@ -250,7 +250,7 @@ Ray uses a short temporary directory under the system temp folder by default. Th
 The older lap-following task is still available for comparison:
 
 ```bash
-python Explore_PPO_agent_training.py --iterations 500 --num-workers 2 --num-gpus 0 --env-name playground --reward-mode continuous --max-steps 1000 --checkpoint-dir tmp/ppo_playground
+python Explore_PPO_agent_training.py --iterations 500 --num-workers 0 --num-gpus 0 --env-name playground --reward-mode continuous --max-steps 1000 --checkpoint-dir tmp/ppo_playground
 ```
 
 ## Visualize training metrics

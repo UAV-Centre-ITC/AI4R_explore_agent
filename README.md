@@ -76,23 +76,23 @@ where:
 - `alpha` is the angle between the robot heading and its velocity direction;
 - `beta` is the angle between the robot heading and the next goal/checkpoint direction.
 
-In the default `coverage` task, the observation is extended with three unvisited checkpoint slots. Each slot contains the relative angle, distance, and visibility flag for one nearby unvisited checkpoint. The final two values report overall checkpoint progress and how long the robot has gone without collecting a new checkpoint. This is different from the older racing-track task, where one next checkpoint was enough.
+In the default `coverage` task, the observation is extended with five unvisited checkpoint slots. Each slot contains the relative angle, distance, and visibility flag for one nearby unvisited checkpoint. The final two values report overall checkpoint progress and how long the robot has gone without collecting a new checkpoint. This is different from the older racing-track task, where one next checkpoint was enough.
 
 The observation values are normalized to match the declared Gymnasium observation space.
 
 ## Reward
 
-The default task uses `reward_mode="coverage"`. Each checkpoint gives reward only the first time it is crossed:
+The default task uses `reward_mode="coverage"`. Each checkpoint gives reward only the first time it is crossed or passed closely:
 
 ```text
 +0.5 for each new checkpoint
  0.0 for revisiting an already collected checkpoint
--1.0 for collision
+-0.02 for touching a wall
 ```
 
-The coverage task also adds a small penalty when the robot hovers in an already visited coarse map cell. This discourages standing still when no checkpoint is immediately visible, while the checkpoint count remains the main evaluation score.
+The coverage task also adds small penalties when the robot hovers in an already visited coarse map cell, touches a wall, or fails to approach a visible unvisited checkpoint. Wall contact blocks the robot and adds a penalty, but it does not end the default rooms episode. This discourages standing still or repeatedly driving into walls, while the checkpoint count remains the main evaluation score.
 
-The episode ends when the robot collides, collects all checkpoints, or reaches the step limit. The default `rooms` map has 20 checkpoints. Each checkpoint is worth `0.5`, so the checkpoint reward maximum is `10.0`. The training return can be lower if the robot collides or spends time hovering without exploring. The default challenge uses `max_steps=400`, which corresponds to about 20 seconds in the visual rollout with the default sleep value.
+The episode ends when the robot collects all checkpoints or reaches the step limit. The default `rooms` map has 20 checkpoints. Each checkpoint is worth `0.5`, so the checkpoint reward maximum is `10.0`. The training return can be lower if the robot hits walls or spends time hovering without exploring. The default challenge uses `max_steps=400`, which corresponds to about 20 seconds in the visual rollout with the default sleep value.
 
 ## Student Task
 
@@ -224,19 +224,19 @@ Use the arrow keys to drive. Press `r` to reset.
 Short CPU run:
 
 ```bash
-python Explore_PPO_agent_training.py --iterations 20 --num-workers 1 --num-gpus 0 --env-name rooms --reward-mode coverage --max-steps 400
+python Explore_PPO_agent_training.py --iterations 20 --num-workers 0 --num-gpus 0 --env-name rooms --reward-mode coverage --max-steps 400
 ```
 
 Longer CPU run:
 
 ```bash
-python Explore_PPO_agent_training.py --iterations 500 --num-workers 2 --num-gpus 0 --env-name rooms --reward-mode coverage --max-steps 400
+python Explore_PPO_agent_training.py --iterations 500 --num-workers 0 --num-gpus 0 --env-name rooms --reward-mode coverage --max-steps 400
 ```
 
 GPU run:
 
 ```bash
-python Explore_PPO_agent_training.py --iterations 500 --num-workers 2 --num-gpus 1 --env-name rooms --reward-mode coverage --max-steps 400
+python Explore_PPO_agent_training.py --iterations 500 --num-workers 0 --num-gpus 1 --env-name rooms --reward-mode coverage --max-steps 400
 ```
 
 Checkpoints are written to:
@@ -265,7 +265,7 @@ Terminal-only rollout check:
 python explore_agent_rollout.py --checkpoint tmp/ppo_rooms/checkpoint_best --env-name rooms --reward-mode coverage --max-steps 400 --steps 400 --sleep 0 --no-gui
 ```
 
-The rollout prints the cumulative reward, checkpoint coverage, checkpoint reward maximum, and accumulated hover penalty.
+The rollout prints the cumulative reward, checkpoint coverage, checkpoint reward maximum, and accumulated shaping penalties.
 In the Pygame view, walls are black, unvisited checkpoints are red, and visited checkpoints turn green. Yellow rays show the robot's distance sensors. Green/blue motion marks show acceleration or braking, and orange arcs show turn commands.
 
 ## Optional Baseline Task
@@ -273,7 +273,7 @@ In the Pygame view, walls are black, unvisited checkpoints are red, and visited 
 The older lap-following task is still available as a baseline:
 
 ```bash
-python Explore_PPO_agent_training.py --iterations 500 --num-workers 2 --num-gpus 0 --env-name playground --reward-mode continuous --max-steps 1000 --checkpoint-dir tmp/ppo_playground
+python Explore_PPO_agent_training.py --iterations 500 --num-workers 0 --num-gpus 0 --env-name playground --reward-mode continuous --max-steps 1000 --checkpoint-dir tmp/ppo_playground
 ```
 
 This can be used to compare path following against unordered room exploration.
