@@ -66,7 +66,7 @@ Both action values are clipped to the range `[-1, 1]`.
 The observation vector contains range-like clearance measurements and robot motion/goal information:
 
 ```text
-observation = [l1, l2, l3, l4, l5, l6, l7, v, alpha, beta]
+observation = [l1, ..., l7, v, alpha, beta]
 ```
 
 where:
@@ -75,6 +75,8 @@ where:
 - `v` is the robot speed magnitude;
 - `alpha` is the angle between the robot heading and its velocity direction;
 - `beta` is the angle between the robot heading and the next goal/checkpoint direction.
+
+In the default `coverage` task, the observation is extended with three unvisited checkpoint slots. Each slot contains the relative angle, distance, and visibility flag for one nearby unvisited checkpoint. The final two values report overall checkpoint progress and how long the robot has gone without collecting a new checkpoint. This is different from the older racing-track task, where one next checkpoint was enough.
 
 The observation values are normalized to match the declared Gymnasium observation space.
 
@@ -88,7 +90,9 @@ The default task uses `reward_mode="coverage"`. Each checkpoint gives reward onl
 -1.0 for collision
 ```
 
-The episode ends when the robot collides, collects all checkpoints, or reaches the step limit. The default `rooms` map has 20 checkpoints. Each checkpoint is worth `0.5`, so the maximum reward is `10.0` if the robot visits every checkpoint without collision. The default challenge uses `max_steps=400`, which corresponds to about 20 seconds in the visual rollout with the default sleep value.
+The coverage task also adds a small capped shaping reward for entering new coarse map cells. This helps the robot keep exploring when no new checkpoint is immediately visible, while the checkpoint count remains the main evaluation score.
+
+The episode ends when the robot collides, collects all checkpoints, or reaches the step limit. The default `rooms` map has 20 checkpoints. Each checkpoint is worth `0.5`, so the checkpoint reward maximum is `10.0`. The training return can be slightly higher because of the capped exploration shaping bonus. The default challenge uses `max_steps=400`, which corresponds to about 20 seconds in the visual rollout with the default sleep value.
 
 ## Student Task
 
@@ -261,7 +265,7 @@ Terminal-only rollout check:
 python explore_agent_rollout.py --checkpoint tmp/ppo_rooms/checkpoint_best --env-name rooms --reward-mode coverage --max-steps 400 --steps 400 --sleep 0 --no-gui
 ```
 
-The rollout prints the cumulative reward, checkpoint coverage, and maximum reward, for example `checkpoints 10/20; max reward 10.0`.
+The rollout prints the cumulative reward, checkpoint coverage, checkpoint reward maximum, and exploration bonus.
 In the Pygame view, walls are black, unvisited checkpoints are red, and visited checkpoints turn green. Yellow rays show the robot's distance sensors. Green/blue motion marks show acceleration or braking, and orange arcs show turn commands.
 
 ## Optional Baseline Task

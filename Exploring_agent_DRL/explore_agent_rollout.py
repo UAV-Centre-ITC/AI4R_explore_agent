@@ -21,6 +21,17 @@ def _autodetect_num_gpus():
     return 0
 
 
+def format_coverage(info):
+    if "visited_checkpoints" not in info:
+        return ""
+    return (
+        f"; checkpoints {info['visited_checkpoints']}/{info['total_checkpoints']} "
+        f"({100 * info['coverage_ratio']:.1f}%); checkpoint max {info['max_reward']:.1f}; "
+        f"exploration bonus {info.get('exploration_bonus', 0.0):.2f}/"
+        f"{info.get('max_exploration_bonus', 0.0):.1f}"
+    )
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Roll out a trained ExploreAgent checkpoint.")
     parser.add_argument("--checkpoint", default="tmp/ppo_rooms/checkpoint_best")
@@ -95,24 +106,14 @@ def main():
 
             if terminated or truncated:
                 reason = info.get("done_reason", "time_limit" if truncated else "done")
-                coverage = ""
-                if "visited_checkpoints" in info:
-                    coverage = (
-                        f"; checkpoints {info['visited_checkpoints']}/{info['total_checkpoints']} "
-                        f"({100 * info['coverage_ratio']:.1f}%); max reward {info['max_reward']:.1f}"
-                    )
+                coverage = format_coverage(info)
                 print(f"Episode ended after {step + 1} steps ({reason}); cumulative reward {total_reward:.2f}{coverage}")
                 break
 
             if args.sleep > 0:
                 sleep(args.sleep)
         else:
-            coverage = ""
-            if "visited_checkpoints" in info:
-                coverage = (
-                    f"; checkpoints {info['visited_checkpoints']}/{info['total_checkpoints']} "
-                    f"({100 * info['coverage_ratio']:.1f}%); max reward {info['max_reward']:.1f}"
-                )
+            coverage = format_coverage(info)
             print(f"Finished {args.steps} rollout steps; cumulative reward {total_reward:.2f}{coverage}")
     finally:
         agent.stop()

@@ -30,6 +30,7 @@ def parse_args():
     parser.add_argument("--max-steps", type=int, default=400)
     parser.add_argument("--checkpoint-dir", default="tmp/ppo_rooms")
     parser.add_argument("--ray-temp-dir", default=str(Path(tempfile.gettempdir()) / "aiar_ray"))
+    parser.add_argument("--entropy-coeff", type=float, default=0.01)
     return parser.parse_args()
 
 
@@ -56,6 +57,7 @@ def print_training_context(args, task_limits):
     print(f"  max steps per episode: {args.max_steps}")
     print(f"  rollout workers: {args.num_workers}")
     print(f"  requested GPUs: {args.num_gpus}")
+    print(f"  entropy coefficient: {args.entropy_coeff}")
     if task_limits["max_reward"] is not None:
         print(
             "  coverage task: "
@@ -63,12 +65,14 @@ def print_training_context(args, task_limits):
             f"{task_limits['checkpoint_reward']:.2f} reward = "
             f"{task_limits['max_reward']:.2f} max reward"
         )
+        print("  exploration shaping: small capped reward for entering new map cells")
 
     print("\nLog columns")
     print("  iter: completed PPO training iteration")
     print("  reward min/mean/max: episode return statistics from the latest training batch")
     if task_limits["max_reward"] is not None:
-        print("  score%: mean reward as a percentage of the maximum coverage reward")
+        print("  score%: mean reward as a percentage of the checkpoint reward maximum")
+        print("          shaping bonuses can make this slightly exceed 100%")
         print("          early scores can be negative because collision has a penalty")
     print("  len: mean episode length in environment steps")
     print("  best: best mean reward saved after warmup iterations\n")
@@ -135,6 +139,7 @@ def main():
         PPOConfig()
         .resources(num_gpus=args.num_gpus)
         .rollouts(num_rollout_workers=args.num_workers)
+        .training(entropy_coeff=args.entropy_coeff)
         .framework("torch")
     )
 
