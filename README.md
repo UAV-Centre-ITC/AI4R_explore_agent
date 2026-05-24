@@ -61,6 +61,8 @@ action = [propulsion, rotation]
 
 Both action values are clipped to the range `[-1, 1]`.
 
+The rooms task uses damped motion with a capped speed so the robot can still turn into narrow gates. Braking uses the negative propulsion action and is intentionally strong enough to slow the robot before checkpoints and walls.
+
 ## Observation Space
 
 The observation vector contains range-like clearance measurements and robot motion/goal information:
@@ -82,7 +84,7 @@ The observation values are normalized to match the declared Gymnasium observatio
 
 ## Reward
 
-The default task uses `reward_mode="coverage"`. Each checkpoint gives reward only the first time it is crossed or passed closely:
+The default task uses `reward_mode="coverage"`. Each checkpoint gives reward only the first time it is crossed:
 
 ```text
 +0.5 for each new checkpoint
@@ -92,7 +94,7 @@ not approaching a visible unvisited checkpoint gives -0.002 per step
 wall-contact penalty starts at -0.2 and converges to -0.5 cumulatively between checkpoints
 ```
 
-The coverage task also adds penalties when the robot hovers in an already visited coarse map cell or fails to approach a visible unvisited checkpoint. If both conditions hold, the combined shaping penalty is `-0.006` per step, so it becomes visible during long 1000-step experiments without overpowering the `+0.5` checkpoint reward. Checkpoint collection uses a map-scaled hit radius and a wall visibility check, so the robot can collect a gate when it reaches it but should not collect or target gates through walls. Wall contact blocks the robot and adds a bounded escalating penalty, but it does not end the default rooms episode. The wall-contact penalty state resets after a new checkpoint is reached. This discourages standing still or repeatedly driving into walls, while the checkpoint count remains the main evaluation score.
+The coverage task also adds penalties when the robot hovers in an already visited coarse map cell or fails to approach a visible unvisited checkpoint. If both conditions hold, the combined shaping penalty is `-0.006` per step, so it becomes visible during long 1000-step experiments without overpowering the `+0.5` checkpoint reward. Checkpoint collection requires the robot movement segment to cross the checkpoint line; driving nearby without crossing does not give reward. Wall contact blocks the robot and adds a bounded escalating penalty, but it does not end the default rooms episode. The wall-contact penalty state resets after a new checkpoint is reached. This discourages standing still or repeatedly driving into walls, while the checkpoint count remains the main evaluation score.
 
 The episode ends when the robot collects all checkpoints or reaches the step limit. The default `rooms` map has 20 checkpoints. Each checkpoint is worth `0.5`, so the checkpoint reward maximum is `10.0`. The training return can be lower if the robot hits walls or spends time hovering without exploring. The default challenge uses `max_steps=400`, which corresponds to about 20 seconds in the visual rollout with the default sleep value.
 

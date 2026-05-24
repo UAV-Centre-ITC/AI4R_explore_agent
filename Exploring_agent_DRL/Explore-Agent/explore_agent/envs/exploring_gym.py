@@ -37,9 +37,7 @@ COVERAGE_COLLISION_PENALTY_CAP = 0.5
 COVERAGE_COLLISION_PENALTY_RATE = 0.4
 COVERAGE_PROGRESS_PENALTY = 0.002
 COVERAGE_PROGRESS_MARGIN = 0.5
-CHECKPOINT_HIT_RADIUS = int(28 * ROOMS_SCALE)
 CHECKPOINT_VISIBILITY_WALL_MARGIN = int(14 * ROOMS_SCALE)
-CHECKPOINT_REWARD_WALL_MARGIN = 3
 CHECKPOINT_TARGET_SAMPLES = 7
 CHECKPOINT_TARGET_TRIM = 0.12
 
@@ -520,15 +518,15 @@ class Environment:
 
 
 class Drone:
-    VEL_MAX = 12 * ROOMS_SCALE
-    DRAG = 0.98
+    VEL_MAX = 8 * ROOMS_SCALE
+    DRAG = 0.96
     # ROT_VEL = 1.28
     # ROT_VEL = 0.64
     # ROT_VEL = 0.32
     ROT_VEL = 0.08
     # ROT_VEL = 0.04
     # ACCELERATION = 1.0
-    ACCELERATION = 0.5 * ROOMS_SCALE
+    ACCELERATION = 0.35 * ROOMS_SCALE
     # ACCELERATION = 0.3
     # ACCELERATION = 0.2
     # ACCELERATION = 0.05
@@ -781,10 +779,6 @@ class Drone:
             self.ang = self.ang + 2 * np.pi
 
     def accelerate(self, accelerate):  # input: action0
-        # backwards at half speed
-        if accelerate < 0:
-            accelerate = accelerate * 0.5
-
         self.vel_x = self.DRAG * (self.vel_x + self.ACCELERATION * accelerate * np.cos(self.ang))
         self.vel_y = self.DRAG * (self.vel_y - self.ACCELERATION * accelerate * np.sin(self.ang))
 
@@ -893,15 +887,7 @@ class Drone:
             for i, goal in enumerate(self.env.goals):
                 if self.coverage_visited[i]:
                     continue
-                closest_point = closest_point_on_line_segment(self.x, self.y, *goal)
-                close_visible_hit = (
-                    distance_to_line_segment(self.x, self.y, *goal, d=CHECKPOINT_HIT_RADIUS)
-                    and self.is_point_visible(closest_point, margin=CHECKPOINT_REWARD_WALL_MARGIN)
-                )
-                hit_goal = (
-                    line_intersect(*self.movement_vector, *goal) is not None
-                    or close_visible_hit
-                )
+                hit_goal = line_intersect(*self.movement_vector, *goal) is not None
                 if hit_goal:
                     self.coverage_visited[i] = True
                     self.coverage_count += 1
