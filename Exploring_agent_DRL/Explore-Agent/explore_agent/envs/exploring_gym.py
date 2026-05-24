@@ -5,6 +5,9 @@ import math
 ROOMS_SCALE = 1.5
 WINDOW_WIDTH = int(1600 * ROOMS_SCALE)
 WINDOW_HEIGHT = int(1000 * ROOMS_SCALE)
+DISPLAY_SCALE = 0.45
+DISPLAY_WIDTH = int(WINDOW_WIDTH * DISPLAY_SCALE)
+DISPLAY_HEIGHT = int(WINDOW_HEIGHT * DISPLAY_SCALE)
 ECHO_RAY_LENGTH = 1500 * ROOMS_SCALE
 ECHO_MAX_DISTANCE = 500 * ROOMS_SCALE
 GOAL_DISTANCE_NORM = 700 * ROOMS_SCALE
@@ -1214,6 +1217,7 @@ class ExploreDrone(gym.Env):
         middle_echo_index = (self.drone.N_ECHO - 1) // 2
 
         def init_renderer(self):
+            pygame.init()
             # self.drone_IMG = [pygame.transform.scale2x(pygame.image.load(os.path.join('imgs', 'drone_no_power.png'))),
             #                   pygame.transform.scale2x(pygame.image.load(os.path.join(
             #                       'imgs', 'drone_power.png'))), pygame.transform.scale2x(pygame.image.load(os.path.join(
@@ -1230,14 +1234,13 @@ class ExploreDrone(gym.Env):
             )
             pygame.display.set_caption("Exploring robot")
             self.clock = pygame.time.Clock()
-            self.win = pygame.display.set_mode(
-                (WINDOW_WIDTH, WINDOW_HEIGHT))
-            pygame.init()
+            self.display_surface = pygame.display.set_mode(
+                (DISPLAY_WIDTH, DISPLAY_HEIGHT))
+            self.win = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT)).convert()
 
             if self.export_frames:
-                self.display_surface = pygame.display.get_surface()
                 self.image3d = np.ndarray(
-                    (WINDOW_WIDTH, WINDOW_HEIGHT, 3), np.uint8)
+                    (DISPLAY_WIDTH, DISPLAY_HEIGHT, 3), np.uint8)
 
             self.gui_interface = []
             if self.gui_reward_total:
@@ -1526,6 +1529,14 @@ class ExploreDrone(gym.Env):
 
         # ─── RENDER GAME ─────────────────────────────────────────────────
         pygame.event.pump()
+        if DISPLAY_SCALE == 1.0:
+            self.display_surface.blit(self.win, (0, 0))
+        else:
+            pygame.transform.smoothscale(
+                self.win,
+                (DISPLAY_WIDTH, DISPLAY_HEIGHT),
+                self.display_surface,
+            )
         pygame.display.update()
 
         # ─── EXPORT GAME FRAMES ──────────────────────────────────────────
