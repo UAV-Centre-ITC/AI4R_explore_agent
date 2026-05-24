@@ -24,9 +24,10 @@ def parse_args():
     parser.add_argument("--warmup-iterations", type=int, default=50)
     parser.add_argument("--num-workers", type=int, default=2)
     parser.add_argument("--num-gpus", type=float, default=0)
-    parser.add_argument("--env-name", default="playground", choices=["default", "empty", "level2", "random", "playground"])
-    parser.add_argument("--reward-mode", default="continuous", choices=["dynamic", "continuous", "static"])
-    parser.add_argument("--checkpoint-dir", default="tmp/ppo")
+    parser.add_argument("--env-name", default="rooms", choices=["default", "empty", "level2", "random", "playground", "rooms"])
+    parser.add_argument("--reward-mode", default="coverage", choices=["dynamic", "continuous", "static", "coverage"])
+    parser.add_argument("--max-steps", type=int, default=400)
+    parser.add_argument("--checkpoint-dir", default="tmp/ppo_rooms")
     parser.add_argument("--ray-temp-dir", default=str(Path(tempfile.gettempdir()) / "aiar_ray"))
     return parser.parse_args()
 
@@ -53,7 +54,12 @@ def main():
     select_env = "ExploreAgent-v0"
     register_env(
         select_env,
-        lambda config: ExploreDrone({"env_name": args.env_name, "reward_mode": args.reward_mode, "gui": False}),
+        lambda config: ExploreDrone({
+            "env_name": args.env_name,
+            "reward_mode": args.reward_mode,
+            "max_steps": args.max_steps,
+            "gui": False,
+        }),
     )
     config = (
         PPOConfig()

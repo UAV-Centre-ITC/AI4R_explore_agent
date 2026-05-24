@@ -1,6 +1,6 @@
 ## AIAR RL practical assignment: 2D exploring robot
 
-This folder contains the code for the 2D exploration practical. PPO is the main training script used in the exercise.
+This folder contains the code for the 2D exploration practical. The default task is a multi-room checkpoint coverage challenge trained with PPO.
 
 ## Platform support
 
@@ -172,13 +172,13 @@ Run this after activating either `aiar-rl-explore` or `aiar-rl-explore-gpu`.
 Windows:
 
 ```bat
-python -c "from explore_agent.envs.exploring_gym import ExploreDrone; env = ExploreDrone({'gui': False, 'env_name': 'playground', 'reward_mode': 'continuous', 'max_steps': 5}); obs, _ = env.reset(); print('observation shape:', obs.shape); obs, reward, terminated, truncated, info = env.step([0.0, 0.0]); print(round(float(reward), 4), terminated, truncated, info)"
+python -c "from explore_agent.envs.exploring_gym import ExploreDrone; env = ExploreDrone({'gui': False, 'env_name': 'rooms', 'reward_mode': 'coverage', 'max_steps': 5}); obs, _ = env.reset(); print('observation shape:', obs.shape); obs, reward, terminated, truncated, info = env.step([0.0, 0.0]); print(round(float(reward), 4), terminated, truncated, info)"
 ```
 
 Ubuntu/Linux/macOS:
 
 ```bash
-python -c "from explore_agent.envs.exploring_gym import ExploreDrone; env = ExploreDrone({'gui': False, 'env_name': 'playground', 'reward_mode': 'continuous', 'max_steps': 5}); obs, _ = env.reset(); print('observation shape:', obs.shape); obs, reward, terminated, truncated, info = env.step([0.0, 0.0]); print(round(float(reward), 4), terminated, truncated, info)"
+python -c "from explore_agent.envs.exploring_gym import ExploreDrone; env = ExploreDrone({'gui': False, 'env_name': 'rooms', 'reward_mode': 'coverage', 'max_steps': 5}); obs, _ = env.reset(); print('observation shape:', obs.shape); obs, reward, terminated, truncated, info = env.step([0.0, 0.0]); print(round(float(reward), 4), terminated, truncated, info)"
 ```
 
 ## Manual driving
@@ -206,42 +206,50 @@ Run these commands from `Exploring_agent_DRL` after activating the Conda environ
 CPU-only short run:
 
 ```bash
-python Explore_PPO_agent_training.py --iterations 20 --num-workers 1 --num-gpus 0
+python Explore_PPO_agent_training.py --iterations 20 --num-workers 1 --num-gpus 0 --env-name rooms --reward-mode coverage --max-steps 400
 ```
 
 CPU-only longer run:
 
 ```bash
-python Explore_PPO_agent_training.py --iterations 500 --num-workers 2 --num-gpus 0
+python Explore_PPO_agent_training.py --iterations 500 --num-workers 2 --num-gpus 0 --env-name rooms --reward-mode coverage --max-steps 400
 ```
 
 GPU training run, only from the `aiar-rl-explore-gpu` environment on Windows or Ubuntu/Linux:
 
 ```bash
-python Explore_PPO_agent_training.py --iterations 500 --num-workers 2 --num-gpus 1
+python Explore_PPO_agent_training.py --iterations 500 --num-workers 2 --num-gpus 1 --env-name rooms --reward-mode coverage --max-steps 400
 ```
 
-Checkpoints are written to `tmp/ppo/`. The best checkpoint is saved at:
+Checkpoints are written to `tmp/ppo_rooms/`. The best checkpoint is saved at:
 
 ```text
-tmp/ppo/checkpoint_best
+tmp/ppo_rooms/checkpoint_best
 ```
 
 ## Test a trained PPO checkpoint
 
 ```bash
-python explore_agent_rollout.py --checkpoint tmp/ppo/checkpoint_best
+python explore_agent_rollout.py --checkpoint tmp/ppo_rooms/checkpoint_best --env-name rooms --reward-mode coverage --max-steps 400
 ```
 
-The rollout opens the Pygame window and prints the cumulative reward when the episode ends.
+The rollout opens the Pygame window and prints the cumulative reward and checkpoint coverage when the episode ends. Unvisited checkpoints are orange, visited checkpoints are grey, and the next target checkpoint is green.
 
 For a terminal-only check without opening a Pygame window:
 
 ```bash
-python explore_agent_rollout.py --checkpoint tmp/ppo/checkpoint_best --steps 20 --sleep 0 --no-gui
+python explore_agent_rollout.py --checkpoint tmp/ppo_rooms/checkpoint_best --env-name rooms --reward-mode coverage --max-steps 400 --steps 400 --sleep 0 --no-gui
 ```
 
 Ray uses a short temporary directory under the system temp folder by default. This avoids path-length issues when the repository is stored in a deeply nested directory.
+
+## Optional playground baseline
+
+The older lap-following task is still available for comparison:
+
+```bash
+python Explore_PPO_agent_training.py --iterations 500 --num-workers 2 --num-gpus 0 --env-name playground --reward-mode continuous --max-steps 1000 --checkpoint-dir tmp/ppo_playground
+```
 
 ## Visualize training metrics
 

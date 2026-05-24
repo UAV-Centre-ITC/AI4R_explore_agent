@@ -35,6 +35,18 @@ def distance_to_line_segment(x, y, x1, y1, x2, y2, d=1):
     return dist < d
 
 
+def point_to_line_segment_distance(x, y, x1, y1, x2, y2):
+    A = x - x1
+    B = y - y1
+    C = x2 - x1
+    D = y2 - y1
+    len_sq = C * C + D * D
+    param = 0 if len_sq == 0 else max(0, min(1, (A * C + B * D) / len_sq))
+    xx = x1 + param * C
+    yy = y1 + param * D
+    return math.sqrt((x - xx) ** 2 + (y - yy) ** 2)
+
+
 def line_intersect(x1, y1, x2, y2, x3, y3, x4, y4):
     # returns a (x, y) tuple or None if there is no intersection
     d = (y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1)
@@ -169,6 +181,49 @@ class Environment:
 
             [375, 100, 375, 300]
         ])
+
+        self.rooms_line1_array_source = np.array([
+            [100, 100, 1500, 100],
+            [1500, 100, 1500, 900],
+            [1500, 900, 100, 900],
+            [100, 900, 100, 100],
+
+            # vertical room dividers with door openings
+            [650, 100, 650, 360],
+            [650, 520, 650, 900],
+            [1050, 100, 1050, 430],
+            [1050, 590, 1050, 900],
+
+            # horizontal room dividers with door openings
+            [100, 500, 300, 500],
+            [470, 500, 650, 500],
+            [650, 500, 830, 500],
+            [970, 500, 1050, 500],
+            [1050, 500, 1230, 500],
+            [1400, 500, 1500, 500],
+        ], dtype=float)
+
+        self.rooms_line2_array_source = np.zeros((0, 4))
+
+        self.rooms_goals_array_source = np.array([
+            [260, 150, 260, 450],
+            [450, 150, 450, 450],
+            [310, 500, 470, 500],
+            [250, 560, 250, 850],
+            [470, 560, 470, 850],
+            [650, 370, 650, 520],
+            [780, 150, 780, 450],
+            [940, 150, 940, 450],
+            [830, 500, 970, 500],
+            [790, 560, 790, 850],
+            [960, 560, 960, 850],
+            [1050, 440, 1050, 590],
+            [1170, 150, 1170, 450],
+            [1370, 150, 1370, 450],
+            [1230, 500, 1400, 500],
+            [1170, 560, 1170, 850],
+            [1370, 560, 1370, 850],
+        ], dtype=float)
         self.load_level()
 
     def load_level(self):
@@ -185,6 +240,11 @@ class Environment:
             line1 = self.L2_line1_array_source.copy()
             line2 = self.L2_line2_array_source.copy()
             goals = self.L2_goals_array_source.copy()
+
+        elif self.game.env_name == 'rooms':
+            line1 = self.rooms_line1_array_source.copy()
+            line2 = self.rooms_line2_array_source.copy()
+            goals = self.rooms_goals_array_source.copy()
 
         # environment = empty: level with no boundaries
         elif self.game.env_name == 'empty':
@@ -388,6 +448,9 @@ class Drone:
         self.action = np.array([0, 0])
         self.action_state = 0
         self.goal_vector_last = None
+        self.coverage_visited = np.zeros(self.env.n_goals, dtype=bool)
+        self.coverage_count = 0
+        self.coverage_count_previous = 0
         self.update_echo_vectors()
         self.update_goal_vectors()
         self.check_collision_echo()
@@ -430,7 +493,30 @@ class Drone:
         self.reward_total = self.n_lap * self.env.n_goals + self.level
         self.reward_step = self.reward_total - reward_total_previous
 
+    def update_reward_coverage(self):
+        new_hits = self.coverage_count - self.coverage_count_previous
+        self.reward_step = float(new_hits)
+        if self.game.done_reason == "collision":
+            self.reward_step -= 1.0
+        self.reward_total = float(self.coverage_count)
+        self.coverage_count_previous = self.coverage_count
+
+    def get_nearest_unvisited_goal(self):
+        unvisited = np.flatnonzero(~self.coverage_visited)
+        if len(unvisited) == 0:
+            return 0
+        distances = [
+            point_to_line_segment_distance(self.x, self.y, *self.env.get_goal_line(i))
+            for i in unvisited
+        ]
+        return int(unvisited[int(np.argmin(distances))])
+
     def update_goal_vectors(self):
+        if self.game.reward_mode == 'coverage':
+            self.level = self.get_nearest_unvisited_goal()
+            self.goal_vector_next = self.env.get_goal_line(self.level)
+            self.goal_vector_last = self.goal_vector_next
+            return
         self.goal_vector_next = self.env.get_goal_line(self.level)
         self.goal_vector_last = self.env.get_goal_line(self.level - 1)
 
@@ -571,6 +657,16 @@ class Drone:
                 self.y = self.y + WINDOW_HEIGHT
 
     def check_collision_goal(self):
+        if self.game.reward_mode == 'coverage':
+            for i, goal in enumerate(self.env.goals):
+                if not self.coverage_visited[i] and line_intersect(*self.movement_vector, *goal) is not None:
+                    self.coverage_visited[i] = True
+                    self.coverage_count += 1
+            self.update_goal_vectors()
+            if self.coverage_count == self.env.n_goals:
+                self.game.set_done(reason="all_checkpoints")
+            return
+
         result_last = line_intersect(*self.movement_vector, *self.goal_vector_last)
         result_next = line_intersect(*self.movement_vector, *self.goal_vector_next)
         if result_last is not None:
@@ -591,7 +687,7 @@ class Drone:
         for line in self.env.level_collision_vectors:
             result = line_intersect(*self.movement_vector, *line)
             if result is not None:
-                self.game.set_done()
+                self.game.set_done(reason="collision")
                 break
 
     def check_collision_echo(self):
@@ -660,12 +756,12 @@ class ExploreDrone(gym.Env):
             # the first value in the list is the default value
             'gui': [True, False],
             'camera_mode': ['fixed', 'centered'],
-            'env_name': ['default', 'empty', 'level1', 'level2', 'random', 'playground'],
+            'env_name': ['default', 'empty', 'level1', 'level2', 'random', 'playground', 'rooms'],
             'env_random_length': [50, 'any', int],  # length of randomly generated environment
             'env_flipped': [False, True],  # activates normal environment, flipped
             'env_flipmode': [False, True],  # activates flip mode. Each reset() flips env
             'env_visible': [True, False],
-            'reward_mode': ['dynamic', 'continuous', 'static'],  # choose reward mode
+            'reward_mode': ['dynamic', 'continuous', 'static', 'coverage'],  # choose reward mode
             'export_frames': [False, True],  # export rendered frames
             'export_states': [False, True],  # export every step
             'export_string': ['', 'any', str],  # string for export filename
@@ -703,7 +799,6 @@ class ExploreDrone(gym.Env):
                 elif 'any' in keyword_dict[keyword]:
                     # any value is allowed, assign if type matches
                     if isinstance(env_config[keyword], keyword_dict[keyword][2]):
-                        print('type matches')
                         assign_dict[keyword] = env_config[keyword]
                     else:
                         print('error: wrong type. type needs to be: ', keyword_dict[keyword][2])
@@ -740,6 +835,7 @@ class ExploreDrone(gym.Env):
         self.gui_draw_goal_all = assign_dict['gui_draw_goal_all']
         self.gui_draw_goal_next = assign_dict['gui_draw_goal_next']
         self.gui_draw_goal_points = assign_dict['gui_draw_goal_points']
+        self.done_reason = "running"
 
     def reset(self, *, seed=None, options=None):
         # ─── FLIP MIRROR ─────────────────────────────────────────────────
@@ -761,6 +857,7 @@ class ExploreDrone(gym.Env):
         self.statematrix = np.zeros((self.max_steps, 7))
 
         # ─── RESET drone ──────────────────────────────────────────────────
+        self.done_reason = "running"
         self.reset_drone_state()
         # generate observation
         self.drone.update_observations()
@@ -777,7 +874,9 @@ class ExploreDrone(gym.Env):
 
     # def reset_drone_state(self, x=200, y=100, ang=1e-9, vel_x=0, vel_y=0, level=0):  # ang=1e-10
     def reset_drone_state(self, x=300, y=200, ang=np.pi, vel_x=0, vel_y=0, level=0):  # ang=1e-10
-        if self.env == 'random':
+        if self.env_name == 'rooms':
+            x, y, ang = 250, 250, 0
+        elif self.env_name == 'random':
             x, y = WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2
         elif self.env_flipped:
             # mirror over y-axis
@@ -793,7 +892,8 @@ class ExploreDrone(gym.Env):
             x, y = WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2
         return self.drone.reset_game_state(x, y, ang, vel_x, vel_y, level)
 
-    def set_done(self):
+    def set_done(self, reason="done"):
+        self.done_reason = reason
         self.drone.done = True
         if (self.export_states) and (self.drone.reward_total > self.export_highscore):
             import os
@@ -855,22 +955,31 @@ class ExploreDrone(gym.Env):
                 self.drone.update_reward_static()
             elif self.reward_mode == 'dynamic':
                 self.drone.update_reward_dynamic()
+            elif self.reward_mode == 'coverage':
+                self.drone.update_reward_coverage()
             else:
                 # make default
                 self.drone.update_reward_continuous()
 
             if self.rule_max_steps:
-                if self.drone.framecount_total == self.max_steps - 1:
+                if self.drone.framecount_total >= self.max_steps:
                     truncated = True
-                    self.set_done()
+                    self.set_done(reason="time_limit")
 
         # ─── GET RETURN VARIABLES ────────────────────────────────────────
         reward = self.drone.reward_step
-        done = self.drone.done
+        done = self.drone.done and self.done_reason != "time_limit"
         info = {
             "x": self.drone.x,
             "y": self.drone.y,
-            "ang": self.drone.ang}
+            "ang": self.drone.ang,
+            "done_reason": self.done_reason}
+        if self.reward_mode == 'coverage':
+            info.update({
+                "visited_checkpoints": int(self.drone.coverage_count),
+                "total_checkpoints": int(self.env.n_goals),
+                "coverage_ratio": float(self.drone.coverage_count / max(1, self.env.n_goals)),
+            })
 
         # ─── RESET ITERATION VARIABLES ───────────────────────────────────
         self.drone.reward_step = 0
@@ -939,8 +1048,10 @@ class ExploreDrone(gym.Env):
         def draw_goal_all():
             for i in range(self.env.goals.shape[0]):
                 goal = tuple(self.env.goals[i, :])
-                pygame.draw.lines(self.win, (232, 154, 70), False,
-                                  (goal[0:2], goal[2:4]), 7)
+                color = (232, 154, 70)
+                if self.reward_mode == 'coverage' and self.drone.coverage_visited[i]:
+                    color = (155, 160, 165)
+                pygame.draw.lines(self.win, color, False, (goal[0:2], goal[2:4]), 7)
 
         def draw_drone():
             self.drone.img = self.drone_IMG[self.drone.action_state]
@@ -1001,6 +1112,8 @@ class ExploreDrone(gym.Env):
             if value == 'reward_total':
                 return str(round(self.drone.reward_total, 2))
             elif value == 'level':
+                if self.reward_mode == 'coverage':
+                    return f"{self.drone.coverage_count}/{self.env.n_goals}"
                 return str(self.drone.level)
             elif value == 'echo_distances':
                 return str(round(self.drone.echo_collision_distances_interp[middle_echo_index], 2))

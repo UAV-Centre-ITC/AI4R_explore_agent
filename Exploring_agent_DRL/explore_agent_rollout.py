@@ -23,11 +23,12 @@ def _autodetect_num_gpus():
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Roll out a trained ExploreAgent checkpoint.")
-    parser.add_argument("--checkpoint", default="tmp/ppo/checkpoint_best")
+    parser.add_argument("--checkpoint", default="tmp/ppo_rooms/checkpoint_best")
     parser.add_argument("--steps", type=int, default=1000)
     parser.add_argument("--sleep", type=float, default=0.05)
-    parser.add_argument("--env-name", default="playground", choices=["default", "empty", "level2", "random", "playground"])
-    parser.add_argument("--reward-mode", default="continuous", choices=["dynamic", "continuous", "static"])
+    parser.add_argument("--env-name", default="rooms", choices=["default", "empty", "level2", "random", "playground", "rooms"])
+    parser.add_argument("--reward-mode", default="coverage", choices=["dynamic", "continuous", "static", "coverage"])
+    parser.add_argument("--max-steps", type=int, default=400)
     parser.add_argument("--ray-temp-dir", default=str(Path(tempfile.gettempdir()) / "aiar_ray"))
     parser.add_argument("--no-gui", action="store_true", help="Run rollout without opening the Pygame window.")
     return parser.parse_args()
@@ -53,6 +54,7 @@ def make_env_config(args, gui):
     return {
         "env_name": args.env_name,
         "reward_mode": args.reward_mode,
+        "max_steps": args.max_steps,
         "gui": gui,
     }
 
@@ -87,14 +89,26 @@ def main():
                 env.render()
 
             if terminated or truncated:
-                reason = "collision" if terminated else "time limit"
-                print(f"Episode ended after {step + 1} steps ({reason}); cumulative reward {total_reward:.2f}")
+                reason = info.get("done_reason", "time_limit" if truncated else "done")
+                coverage = ""
+                if "visited_checkpoints" in info:
+                    coverage = (
+                        f"; checkpoints {info['visited_checkpoints']}/{info['total_checkpoints']} "
+                        f"({100 * info['coverage_ratio']:.1f}%)"
+                    )
+                print(f"Episode ended after {step + 1} steps ({reason}); cumulative reward {total_reward:.2f}{coverage}")
                 break
 
             if args.sleep > 0:
                 sleep(args.sleep)
         else:
-            print(f"Finished {args.steps} rollout steps; cumulative reward {total_reward:.2f}")
+            coverage = ""
+            if "visited_checkpoints" in info:
+                coverage = (
+                    f"; checkpoints {info['visited_checkpoints']}/{info['total_checkpoints']} "
+                    f"({100 * info['coverage_ratio']:.1f}%)"
+                )
+            print(f"Finished {args.steps} rollout steps; cumulative reward {total_reward:.2f}{coverage}")
     finally:
         agent.stop()
         ray.shutdown()

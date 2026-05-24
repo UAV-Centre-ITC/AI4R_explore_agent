@@ -39,11 +39,8 @@ def pressed_to_action(keytouple):
 # ─── INITIALIZE AND RUN ENVIRONMENT ─────────────────────────────────────────────
 env_config = {
     'gui': True,
-    # 'env_name': 'default',
-    # 'env_name': 'empty',
-    #'env_name': 'level1',
-     'env_name': 'level2',
-    # 'env_name': 'random',
+    'env_name': 'rooms',
+    'reward_mode': 'coverage',
     # 'camera_mode': 'centered',
     # 'env_flipped': False,
     # 'env_flipmode': False,
@@ -51,7 +48,7 @@ env_config = {
     'export_states': True,
     # 'export_highscore': False,
     'export_string': 'human',
-    'max_steps': 1000,
+    'max_steps': 400,
     'gui_reward_total': True,
     'gui_echo_distances': True,
     'gui_level': True,

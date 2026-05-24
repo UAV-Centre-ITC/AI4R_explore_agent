@@ -2,11 +2,13 @@
 
 This repository contains the code for the AI for Autonomous Robotics practical on training a deep reinforcement learning agent for a 2D mobile robot exploration task.
 
-The exercise uses a custom Gymnasium environment, Ray RLlib, PyTorch, and Pygame. The provided training script uses PPO, but students may experiment with other RLlib algorithms.
+The exercise uses a custom Gymnasium environment, Ray RLlib, PyTorch, and Pygame. The main task is a multi-room exploration challenge trained with PPO.
 
 ## Assignment Overview
 
-The goal is to train a simulated mobile robot to explore the `playground` map while avoiding walls and obstacles. A successful policy should drive around the environment and complete a full lap of the map layout.
+The goal is to train a simulated mobile robot to explore a small multi-room map while avoiding walls. Each room contains checkpoint gates. The agent receives reward for crossing new checkpoints, and the episode has a fixed time budget.
+
+A good policy should visit as many unique checkpoints as possible before the time limit. A poor policy may collide, spin near the start, or repeatedly revisit the same area.
 
 Students should use the exercise to connect reinforcement learning concepts from the lectures to an implemented DRL workflow:
 
@@ -14,7 +16,7 @@ Students should use the exercise to connect reinforcement learning concepts from
 - understanding the action space, observation space, reward function, and training loop;
 - training a DRL policy in the custom environment;
 - testing the trained policy visually;
-- changing selected hyperparameters and explaining their effect on training and rollout behavior.
+- changing selected hyperparameters and explaining their effect on exploration behavior.
 
 The original assignment handout is included here:
 
@@ -32,7 +34,7 @@ After completing the practical, students should be able to:
 
 ## Environment
 
-The robot moves in a 2D continuous environment with walls, obstacles, and goal/checkpoint regions. The environment follows the standard Gymnasium interaction pattern:
+The robot moves in a 2D continuous environment with walls, rooms, door openings, and checkpoint gates. The environment follows the standard Gymnasium interaction pattern:
 
 - `reset()` initializes an episode;
 - `step(action)` applies one action and returns the next observation, reward, and termination flags;
@@ -78,22 +80,28 @@ The observation values are normalized to match the declared Gymnasium observatio
 
 ## Reward
 
-The reward is based on passing goal/checkpoint regions placed along the map. This encourages the robot to explore new parts of the environment instead of simply maximizing speed. Collisions with walls or obstacles terminate the episode.
+The default task uses `reward_mode="coverage"`. Each checkpoint gives reward only the first time it is crossed:
 
-Students may experiment with reward shaping through the goal/checkpoint positions, but the wall and obstacle layout should remain unchanged when comparing results between groups.
+```text
++1.0 for each new checkpoint
+ 0.0 for revisiting an already collected checkpoint
+-1.0 for collision
+```
+
+The episode ends when the robot collides, collects all checkpoints, or reaches the step limit. The default challenge uses `max_steps=400`, which corresponds to about 20 seconds in the visual rollout with the default sleep value.
 
 ## Student Task
 
-Train a DRL agent to complete the 2D exploration task. PPO is provided as the default algorithm, but other off-the-shelf RLlib algorithms can also be tested.
+Train a DRL agent to maximize checkpoint coverage in the multi-room environment. PPO is provided as the default algorithm, but other off-the-shelf RLlib algorithms can also be tested.
 
 Recommended experiments:
 
-- train PPO with the default settings;
+- train PPO on the `rooms` environment with `coverage` reward;
 - vary one or two selected hyperparameters;
-- compare reward curves and rollout behavior;
-- test whether the trained policy can complete a full lap;
+- compare reward curves, checkpoint coverage, and rollout behavior;
+- test whether the trained policy enters multiple rooms;
 - document failure cases such as collisions, oscillations, or getting stuck;
-- keep the original map layout fixed for fair comparison.
+- keep the challenge map fixed for fair comparison.
 
 The main PPO training script is:
 
@@ -115,7 +123,7 @@ Prepare a short video or presentation segment showing:
 - which hyperparameters or environment settings were changed;
 - training evidence such as reward curves or logs;
 - visual rollout of the trained robot;
-- whether the robot completed the exploration task;
+- how many checkpoints the robot reached within the time limit;
 - examples of both successful and challenging test cases.
 
 The assignment handout specifies a short video report rather than a written report.
@@ -186,7 +194,7 @@ Detailed Windows, Ubuntu/Linux, and macOS setup notes are provided in:
 Run this after activating the Conda environment:
 
 ```bash
-python -c "from explore_agent.envs.exploring_gym import ExploreDrone; env = ExploreDrone({'gui': False, 'env_name': 'playground', 'reward_mode': 'continuous', 'max_steps': 5}); obs, _ = env.reset(); print('observation shape:', obs.shape); obs, reward, terminated, truncated, info = env.step([0.0, 0.0]); print(round(float(reward), 4), terminated, truncated, info)"
+python -c "from explore_agent.envs.exploring_gym import ExploreDrone; env = ExploreDrone({'gui': False, 'env_name': 'rooms', 'reward_mode': 'coverage', 'max_steps': 5}); obs, _ = env.reset(); print('observation shape:', obs.shape); obs, reward, terminated, truncated, info = env.step([0.0, 0.0]); print(round(float(reward), 4), terminated, truncated, info)"
 ```
 
 ## Manual Driving
@@ -212,31 +220,31 @@ Use the arrow keys to drive. Press `r` to reset.
 Short CPU run:
 
 ```bash
-python Explore_PPO_agent_training.py --iterations 20 --num-workers 1 --num-gpus 0
+python Explore_PPO_agent_training.py --iterations 20 --num-workers 1 --num-gpus 0 --env-name rooms --reward-mode coverage --max-steps 400
 ```
 
 Longer CPU run:
 
 ```bash
-python Explore_PPO_agent_training.py --iterations 500 --num-workers 2 --num-gpus 0
+python Explore_PPO_agent_training.py --iterations 500 --num-workers 2 --num-gpus 0 --env-name rooms --reward-mode coverage --max-steps 400
 ```
 
 GPU run:
 
 ```bash
-python Explore_PPO_agent_training.py --iterations 500 --num-workers 2 --num-gpus 1
+python Explore_PPO_agent_training.py --iterations 500 --num-workers 2 --num-gpus 1 --env-name rooms --reward-mode coverage --max-steps 400
 ```
 
 Checkpoints are written to:
 
 ```text
-tmp/ppo/
+tmp/ppo_rooms/
 ```
 
 The best checkpoint is saved at:
 
 ```text
-tmp/ppo/checkpoint_best
+tmp/ppo_rooms/checkpoint_best
 ```
 
 ## Test a Trained Policy
@@ -244,14 +252,27 @@ tmp/ppo/checkpoint_best
 Visual rollout:
 
 ```bash
-python explore_agent_rollout.py --checkpoint tmp/ppo/checkpoint_best
+python explore_agent_rollout.py --checkpoint tmp/ppo_rooms/checkpoint_best --env-name rooms --reward-mode coverage --max-steps 400
 ```
 
 Terminal-only rollout check:
 
 ```bash
-python explore_agent_rollout.py --checkpoint tmp/ppo/checkpoint_best --steps 20 --sleep 0 --no-gui
+python explore_agent_rollout.py --checkpoint tmp/ppo_rooms/checkpoint_best --env-name rooms --reward-mode coverage --max-steps 400 --steps 400 --sleep 0 --no-gui
 ```
+
+The rollout prints the cumulative reward and checkpoint coverage, for example `checkpoints 10/17`.
+In the Pygame view, unvisited checkpoints are orange, visited checkpoints are grey, and the next target checkpoint is green.
+
+## Optional Baseline Task
+
+The older lap-following task is still available as a baseline:
+
+```bash
+python Explore_PPO_agent_training.py --iterations 500 --num-workers 2 --num-gpus 0 --env-name playground --reward-mode continuous --max-steps 1000 --checkpoint-dir tmp/ppo_playground
+```
+
+This can be used to compare path following against unordered room exploration.
 
 ## TensorBoard
 
