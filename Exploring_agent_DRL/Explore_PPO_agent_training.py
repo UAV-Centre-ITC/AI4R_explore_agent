@@ -1,5 +1,6 @@
 import argparse
 import shutil
+import sys
 import tempfile
 from pathlib import Path
 
@@ -32,6 +33,73 @@ def parse_args():
     return parser.parse_args()
 
 
+def get_task_limits(args):
+    env = ExploreDrone({
+        "env_name": args.env_name,
+        "reward_mode": args.reward_mode,
+        "max_steps": args.max_steps,
+        "gui": False,
+    })
+    if args.reward_mode == "coverage":
+        return {
+            "n_checkpoints": env.env.n_goals,
+            "checkpoint_reward": env.drone.COVERAGE_REWARD,
+            "max_reward": env.env.n_goals * env.drone.COVERAGE_REWARD,
+        }
+    return {"n_checkpoints": None, "checkpoint_reward": None, "max_reward": None}
+
+
+def print_training_context(args, task_limits):
+    print("\nTraining PPO")
+    print(f"  environment: {args.env_name}")
+    print(f"  reward mode: {args.reward_mode}")
+    print(f"  max steps per episode: {args.max_steps}")
+    print(f"  rollout workers: {args.num_workers}")
+    print(f"  requested GPUs: {args.num_gpus}")
+    if task_limits["max_reward"] is not None:
+        print(
+            "  coverage task: "
+            f"{task_limits['n_checkpoints']} checkpoints x "
+            f"{task_limits['checkpoint_reward']:.2f} reward = "
+            f"{task_limits['max_reward']:.2f} max reward"
+        )
+
+    print("\nLog columns")
+    print("  iter: completed PPO training iteration")
+    print("  reward min/mean/max: episode return statistics from the latest training batch")
+    if task_limits["max_reward"] is not None:
+        print("  score%: mean reward as a percentage of the maximum coverage reward")
+        print("          early scores can be negative because collision has a penalty")
+    print("  len: mean episode length in environment steps")
+    print("  best: best mean reward saved after warmup iterations\n")
+    sys.stdout.flush()
+
+
+def format_training_status(iteration, result, best_reward, max_reward):
+    min_reward = result["episode_reward_min"]
+    mean_reward = result["episode_reward_mean"]
+    max_seen_reward = result["episode_reward_max"]
+    mean_len = result["episode_len_mean"]
+    best = best_reward if best_reward != float("-inf") else 0.0
+
+    if max_reward is not None and max_reward > 0:
+        score_percent = 100.0 * mean_reward / max_reward
+        return (
+            f"iter {iteration:4d} | "
+            f"reward {min_reward:7.2f}/{mean_reward:7.2f}/{max_seen_reward:7.2f} | "
+            f"score {score_percent:6.1f}% | "
+            f"len {mean_len:6.1f} | "
+            f"best {best:7.2f}"
+        )
+
+    return (
+        f"iter {iteration:4d} | "
+        f"reward {min_reward:7.2f}/{mean_reward:7.2f}/{max_seen_reward:7.2f} | "
+        f"len {mean_len:6.1f} | "
+        f"best {best:7.2f}"
+    )
+
+
 def main():
     args = parse_args()
     if args.num_gpus > 0 and not torch.cuda.is_available():
@@ -42,6 +110,8 @@ def main():
 
     checkpoint_dir = Path(args.checkpoint_dir)
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    task_limits = get_task_limits(args)
+    print_training_context(args, task_limits)
 
     if args.num_gpus == 0:
         resource_spec._autodetect_num_gpus = _autodetect_num_gpus
@@ -69,7 +139,6 @@ def main():
     )
 
     agent = config.build(env=select_env)
-    status = "{:4d} reward {:8.2f}/{:8.2f}/{:8.2f} len {:6.2f}"
     best_reward = float("-inf")
     best_checkpoint = None
 
@@ -89,13 +158,7 @@ def main():
             if n % args.save_interval == 0:
                 agent.save(str(checkpoint_dir / f"checkpoint_{n:04d}"))
 
-            print(status.format(
-                n + 1,
-                result["episode_reward_min"],
-                mean_reward,
-                result["episode_reward_max"],
-                result["episode_len_mean"],
-            ))
+            print(format_training_status(n + 1, result, best_reward, task_limits["max_reward"]))
     finally:
         agent.stop()
         ray.shutdown()
