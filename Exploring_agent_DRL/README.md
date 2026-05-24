@@ -233,7 +233,7 @@ tmp/ppo_rooms/checkpoint_best
 python explore_agent_rollout.py --checkpoint tmp/ppo_rooms/checkpoint_best --env-name rooms --reward-mode coverage --max-steps 400 --gui
 ```
 
-The rollout opens the Pygame window and prints the cumulative reward, checkpoint coverage, and maximum reward when the episode ends. Walls are black, unvisited checkpoints are red, and visited checkpoints turn green.
+The rollout opens the Pygame window and prints the cumulative reward, checkpoint coverage, and maximum reward when the episode ends. The default `rooms` map has 20 checkpoints worth `0.5` each, so the maximum reward is `10.0`. Walls are black, unvisited checkpoints are red, and visited checkpoints turn green.
 
 For a terminal-only check without opening a Pygame window:
 

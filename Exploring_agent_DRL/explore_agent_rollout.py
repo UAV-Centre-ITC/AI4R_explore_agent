@@ -96,7 +96,7 @@ def main():
                 if "visited_checkpoints" in info:
                     coverage = (
                         f"; checkpoints {info['visited_checkpoints']}/{info['total_checkpoints']} "
-                        f"({100 * info['coverage_ratio']:.1f}%); max reward {info['max_reward']}"
+                        f"({100 * info['coverage_ratio']:.1f}%); max reward {info['max_reward']:.1f}"
                     )
                 print(f"Episode ended after {step + 1} steps ({reason}); cumulative reward {total_reward:.2f}{coverage}")
                 break
@@ -108,7 +108,7 @@ def main():
             if "visited_checkpoints" in info:
                 coverage = (
                     f"; checkpoints {info['visited_checkpoints']}/{info['total_checkpoints']} "
-                    f"({100 * info['coverage_ratio']:.1f}%); max reward {info['max_reward']}"
+                    f"({100 * info['coverage_ratio']:.1f}%); max reward {info['max_reward']:.1f}"
                 )
             print(f"Finished {args.steps} rollout steps; cumulative reward {total_reward:.2f}{coverage}")
     finally:

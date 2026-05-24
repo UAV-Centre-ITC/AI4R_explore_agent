@@ -193,9 +193,9 @@ class Environment:
             [380, 80, 380, 330],
             [380, 410, 380, 610],
             [380, 690, 380, 740],
-            [380, 820, 380, 900],
-            [120, 570, 380, 570],
-            [120, 740, 380, 740],
+            [380, 837, 380, 900],
+            [123, 570, 378, 570],
+            [380, 742, 380, 740],
 
             # upper internal room with a doorway on the left
             [580, 260, 1260, 260],
@@ -205,38 +205,38 @@ class Environment:
             [580, 440, 580, 560],
 
             # lower rooms
-            [380, 740, 660, 740],
-            [760, 740, 850, 740],
-            [980, 740, 1280, 740],
-            [820, 740, 820, 800],
-            [820, 860, 820, 900],
-            [1260, 740, 1260, 800],
-            [1260, 860, 1260, 900],
+            [380, 740, 599, 740],
+            [726, 742, 850, 740],
+            [980, 740, 1351, 740],
+            [820, 743, 820, 809],
+            [820, 874, 820, 900],
+            [1260, 740, 1260, 757],
+            [1261, 821, 1260, 900],
         ], dtype=float)
 
         self.rooms_line2_array_source = np.zeros((0, 4))
 
         self.rooms_goals_array_source = np.array([
             [130, 210, 370, 210],
-            [130, 500, 370, 500],
-            [130, 790, 370, 790],
+            [127, 448, 370, 448],
             [380, 330, 380, 410],
             [380, 610, 380, 690],
-            [380, 740, 380, 820],
-            [500, 120, 570, 260],
+            [380, 748, 380, 832],
+            [390, 90, 576, 256],
             [580, 360, 580, 440],
-            [820, 290, 820, 540],
-            [1060, 290, 1060, 540],
+            [820, 271, 820, 551],
+            [1060, 270, 1060, 550],
             [1260, 560, 1470, 560],
-            [1270, 260, 1470, 90],
-            [800, 560, 800, 740],
-            [690, 740, 760, 740],
-            [880, 740, 980, 740],
-            [820, 800, 820, 860],
-            [530, 760, 530, 890],
-            [1150, 760, 1150, 890],
-            [1260, 800, 1260, 860],
-            [1280, 740, 1470, 740],
+            [1268, 255, 1473, 89],
+            [800, 569, 800, 733],
+            [600, 740, 723, 740],
+            [853, 740, 980, 740],
+            [820, 810, 820, 871],
+            [530, 752, 530, 890],
+            [1092, 751, 1092, 891],
+            [1260, 759, 1260, 818],
+            [1352, 740, 1470, 740],
+            [130, 790, 370, 790],
         ], dtype=float)
         self.load_level()
 
@@ -439,6 +439,7 @@ class Drone:
     N_ECHO = 7  # must be odd
     # N_ECHO = 15  # must be odd
     # N_ECHO = 31  # must be odd
+    COVERAGE_REWARD = 0.5
 
     def __init__(self, game, env):
         self.game = game
@@ -509,10 +510,10 @@ class Drone:
 
     def update_reward_coverage(self):
         new_hits = self.coverage_count - self.coverage_count_previous
-        self.reward_step = float(new_hits)
+        self.reward_step = float(new_hits) * self.COVERAGE_REWARD
         if self.game.done_reason == "collision":
             self.reward_step -= 1.0
-        self.reward_total = float(self.coverage_count)
+        self.reward_total = float(self.coverage_count) * self.COVERAGE_REWARD
         self.coverage_count_previous = self.coverage_count
 
     def get_nearest_unvisited_goal(self):
@@ -993,7 +994,8 @@ class ExploreDrone(gym.Env):
                 "visited_checkpoints": int(self.drone.coverage_count),
                 "total_checkpoints": int(self.env.n_goals),
                 "coverage_ratio": float(self.drone.coverage_count / max(1, self.env.n_goals)),
-                "max_reward": int(self.env.n_goals),
+                "checkpoint_reward": float(self.drone.COVERAGE_REWARD),
+                "max_reward": float(self.env.n_goals * self.drone.COVERAGE_REWARD),
             })
 
         # ─── RESET ITERATION VARIABLES ───────────────────────────────────
