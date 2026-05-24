@@ -10,6 +10,7 @@ import torch
 from ray.tune.registry import register_env
 from explore_agent.envs.exploring_gym import (
     COVERAGE_HOVER_PENALTY,
+    COVERAGE_MEMORY_STEPS,
     COVERAGE_PROGRESS_PENALTY,
     ExploreDrone,
 )
@@ -53,8 +54,9 @@ def get_task_limits(args):
             "n_checkpoints": env.env.n_goals,
             "checkpoint_reward": env.drone.COVERAGE_REWARD,
             "max_reward": env.env.n_goals * env.drone.COVERAGE_REWARD,
+            "observation_shape": env.observation_space.shape,
         }
-    return {"n_checkpoints": None, "checkpoint_reward": None, "max_reward": None}
+    return {"n_checkpoints": None, "checkpoint_reward": None, "max_reward": None, "observation_shape": env.observation_space.shape}
 
 
 def print_training_context(args, task_limits):
@@ -64,6 +66,7 @@ def print_training_context(args, task_limits):
     print(f"  max steps per episode: {args.max_steps}")
     print(f"  rollout workers: {args.num_workers}")
     print(f"  requested GPUs: {args.num_gpus}")
+    print(f"  observation shape: {task_limits['observation_shape']}")
     print(f"  entropy coefficient: {args.entropy_coeff}")
     print(
         "  PPO update: "
@@ -83,6 +86,7 @@ def print_training_context(args, task_limits):
             f"-{COVERAGE_PROGRESS_PENALTY:.3f}/step for no progress, "
             "bounded wall-contact penalty"
         )
+        print(f"  checkpoint memory: remembers the last visible unvisited checkpoint for {COVERAGE_MEMORY_STEPS} steps")
 
     print("\nLog columns")
     print("  iter: completed PPO training iteration")

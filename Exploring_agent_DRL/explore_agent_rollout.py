@@ -30,7 +30,8 @@ def format_coverage(info):
         f"hover penalty {info.get('hover_penalty', 0.0):.2f}; "
         f"crashes {info.get('collision_count', 0)}; "
         f"collision penalty {info.get('collision_penalty_total', 0.0):.2f}; "
-        f"progress penalty {info.get('progress_penalty', 0.0):.2f}"
+        f"progress penalty {info.get('progress_penalty', 0.0):.2f}; "
+        f"memory checkpoint {info.get('memory_checkpoint', -1)}"
     )
 
 

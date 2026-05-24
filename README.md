@@ -78,9 +78,9 @@ where:
 - `alpha` is the angle between the robot heading and its velocity direction;
 - `beta` is the angle between the robot heading and the next goal/checkpoint direction.
 
-In the default `coverage` task, the observation is extended with five unvisited checkpoint slots. Each slot contains the relative angle, distance, and visibility flag for a reachable visible point sampled along one nearby unvisited checkpoint. The final two values report overall checkpoint progress and how long the robot has gone without collecting a new checkpoint. This is different from the older racing-track task, where one next checkpoint was enough. Sampling the checkpoint target keeps the policy from aiming at endpoints close to walls or already visited gates.
+In the default `coverage` task, the observation is extended with five unvisited checkpoint slots. Each slot contains the relative angle, distance, and visibility flag for a reachable visible point sampled along one nearby unvisited checkpoint. The observation also contains a four-value memory slot for the last visible unvisited checkpoint: relative angle, distance, valid flag, and freshness. This lets the policy turn back toward a checkpoint it saw but overshot. The final two values report overall checkpoint progress and how long the robot has gone without collecting a new checkpoint. This is different from the older racing-track task, where one next checkpoint was enough. Sampling the checkpoint target keeps the policy from aiming at endpoints close to walls or already visited gates.
 
-The observation values are normalized to match the declared Gymnasium observation space.
+The observation values are normalized to match the declared Gymnasium observation space. For the default coverage task the observation shape is `(31,)`.
 
 ## Reward
 

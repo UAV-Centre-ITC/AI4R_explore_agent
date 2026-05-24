@@ -30,6 +30,8 @@ COLOR_PANEL_BORDER = (70, 70, 70)
 COLOR_TEXT = (19, 19, 41)
 
 COVERAGE_GOAL_SLOTS = 5
+COVERAGE_MEMORY_FEATURES = 4
+COVERAGE_MEMORY_STEPS = 120
 COVERAGE_CELL_SIZE = int(80 * ROOMS_SCALE)
 COVERAGE_HOVER_SPEED_THRESHOLD = 0.25
 COVERAGE_HOVER_PENALTY = 0.004
@@ -571,6 +573,10 @@ class Drone:
         self.coverage_count = 0
         self.coverage_count_previous = 0
         self.coverage_goal_features = np.zeros(COVERAGE_GOAL_SLOTS * 3, dtype=np.float32)
+        self.coverage_memory_features = np.array([0.0, 1.0, -1.0, -1.0], dtype=np.float32)
+        self.coverage_memory_goal_index = None
+        self.coverage_memory_point = np.zeros(2, dtype=float)
+        self.coverage_memory_age = COVERAGE_MEMORY_STEPS + 1
         self.coverage_progress_interp = -1.0
         self.coverage_stall_interp = -1.0
         self.coverage_explored_cells = {
@@ -665,7 +671,7 @@ class Drone:
             self.coverage_target_distance_previous = None
             return
 
-        _, distance, target_index, _, visible = candidates[0]
+        _, distance, target_index, _, visible, _, _ = candidates[0]
         if (
             visible
             and self.coverage_target_index_previous == target_index
@@ -686,7 +692,7 @@ class Drone:
             distance = np.sqrt(dx ** 2 + dy ** 2)
             goal_ang = np.arctan2(-dy, dx)
             goal_ang_diff = wrap_angle(self.ang - goal_ang)
-            candidates.append((not visible, distance, int(goal_index), goal_ang_diff, visible))
+            candidates.append((not visible, distance, int(goal_index), goal_ang_diff, visible, px, py))
         candidates.sort(key=lambda item: (item[0], item[1]))
         return candidates
 
@@ -731,10 +737,52 @@ class Drone:
                 return False
         return True
 
+    def clear_checkpoint_memory(self):
+        self.coverage_memory_features = np.array([0.0, 1.0, -1.0, -1.0], dtype=np.float32)
+        self.coverage_memory_goal_index = None
+        self.coverage_memory_point[:] = 0.0
+        self.coverage_memory_age = COVERAGE_MEMORY_STEPS + 1
+
+    def update_checkpoint_memory(self, candidates):
+        if self.coverage_memory_goal_index is not None and self.coverage_visited[self.coverage_memory_goal_index]:
+            self.clear_checkpoint_memory()
+
+        visible_candidates = [candidate for candidate in candidates if candidate[4]]
+        if visible_candidates:
+            _, _, goal_index, _, _, px, py = visible_candidates[0]
+            self.coverage_memory_goal_index = goal_index
+            self.coverage_memory_point[:] = [px, py]
+            self.coverage_memory_age = 0
+        elif self.coverage_memory_goal_index is not None:
+            self.coverage_memory_age += 1
+            if self.coverage_memory_age > COVERAGE_MEMORY_STEPS:
+                self.clear_checkpoint_memory()
+
+        if self.coverage_memory_goal_index is None:
+            return
+
+        dx = self.coverage_memory_point[0] - self.x
+        dy = self.coverage_memory_point[1] - self.y
+        distance = np.sqrt(dx ** 2 + dy ** 2)
+        goal_ang = np.arctan2(-dy, dx)
+        goal_ang_diff = wrap_angle(self.ang - goal_ang)
+        freshness = np.interp(
+            min(self.coverage_memory_age, COVERAGE_MEMORY_STEPS),
+            [0, COVERAGE_MEMORY_STEPS],
+            [1, -1],
+        )
+        self.coverage_memory_features = np.array([
+            np.interp(goal_ang_diff, [-np.pi, np.pi], [-1, 1]),
+            np.interp(min(distance, GOAL_DISTANCE_NORM), [0, GOAL_DISTANCE_NORM], [-1, 1]),
+            1.0,
+            freshness,
+        ], dtype=np.float32)
+
     def update_coverage_goal_features(self):
         features = np.zeros(COVERAGE_GOAL_SLOTS * 3, dtype=np.float32)
         candidates = self.get_unvisited_goal_candidates()
-        for slot, (_, distance, _, goal_ang_diff, visible) in enumerate(candidates[:COVERAGE_GOAL_SLOTS]):
+        self.update_checkpoint_memory(candidates)
+        for slot, (_, distance, _, goal_ang_diff, visible, _, _) in enumerate(candidates[:COVERAGE_GOAL_SLOTS]):
             base = slot * 3
             features[base] = np.interp(goal_ang_diff, [-np.pi, np.pi], [-1, 1])
             features[base + 1] = np.interp(
@@ -1015,7 +1063,7 @@ class ExploreDrone(gym.Env):
         self.drone = Drone(self, self.env)
         observation_size = self.drone.N_ECHO + 3
         if self.reward_mode == 'coverage':
-            observation_size += COVERAGE_GOAL_SLOTS * 3 + 2
+            observation_size += COVERAGE_GOAL_SLOTS * 3 + COVERAGE_MEMORY_FEATURES + 2
         self.observation_space = gym.spaces.Box(
             low=-1.,
             high=1.,
@@ -1037,7 +1085,12 @@ class ExploreDrone(gym.Env):
                 self.drone.coverage_progress_interp,
                 self.drone.coverage_stall_interp,
             ])
-            observation = np.concatenate((observation, self.drone.coverage_goal_features, coverage_state))
+            observation = np.concatenate((
+                observation,
+                self.drone.coverage_goal_features,
+                self.drone.coverage_memory_features,
+                coverage_state,
+            ))
         return np.clip(observation, -1.0, 1.0).astype(np.float32)
 
     def parse_env_config(self, env_config):
@@ -1287,6 +1340,8 @@ class ExploreDrone(gym.Env):
                 "collision_penalty_total": float(self.drone.coverage_collision_penalty_total),
                 "progress_penalty": float(self.drone.coverage_progress_penalty_total),
                 "last_progress_penalty": float(self.drone.coverage_last_progress_penalty),
+                "memory_checkpoint": -1 if self.drone.coverage_memory_goal_index is None else int(self.drone.coverage_memory_goal_index),
+                "memory_age": int(self.drone.coverage_memory_age),
             })
 
         # ─── RESET ITERATION VARIABLES ───────────────────────────────────
