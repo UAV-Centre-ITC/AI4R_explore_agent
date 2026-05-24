@@ -10,7 +10,6 @@ import torch
 from ray.tune.registry import register_env
 from explore_agent.envs.exploring_gym import (
     COVERAGE_HOVER_PENALTY,
-    COVERAGE_MEMORY_STEPS,
     COVERAGE_PROGRESS_PENALTY,
     ExploreDrone,
 )
@@ -86,7 +85,6 @@ def print_training_context(args, task_limits):
             f"-{COVERAGE_PROGRESS_PENALTY:.3f}/step for no progress, "
             "bounded wall-contact penalty"
         )
-        print(f"  checkpoint memory: remembers the last visible unvisited checkpoint for {COVERAGE_MEMORY_STEPS} steps")
 
     print("\nLog columns")
     print("  iter: completed PPO training iteration")
