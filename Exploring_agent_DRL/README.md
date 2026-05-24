@@ -235,7 +235,7 @@ tmp/ppo_rooms/checkpoint_best
 python explore_agent_rollout.py --checkpoint tmp/ppo_rooms/checkpoint_best --env-name rooms --reward-mode coverage --max-steps 400 --gui
 ```
 
-The rollout opens the Pygame window and prints the cumulative reward, checkpoint coverage, checkpoint reward maximum, and accumulated shaping penalties when the episode ends. The default `rooms` map has 20 checkpoints worth `0.5` each, so the checkpoint reward maximum is `10.0`. Walls are black, unvisited checkpoints are red, visited checkpoints turn green, and yellow rays show the robot's distance sensors. Green/blue motion marks show acceleration or braking, and orange arcs show turn commands.
+The rollout opens the Pygame window and prints the cumulative reward, checkpoint coverage, checkpoint reward maximum, and accumulated shaping penalties when the episode ends. The default `rooms` map has 20 checkpoints worth `0.5` each, so the checkpoint reward maximum is `10.0`. Walls are black, unvisited checkpoints are red, visited checkpoints turn green, and yellow rays show the robot's distance sensors. The GUI legend explains the map, sensor rays, ray hits, and motion overlays. Live labels near the robot show acceleration, braking, and turn commands; green/blue arrows pulse for acceleration or braking, orange arcs pulse for turning, and the dark arrow shows the actual velocity direction.
 
 For a terminal-only check without opening a Pygame window:
 

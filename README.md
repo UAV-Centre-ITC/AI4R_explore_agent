@@ -266,7 +266,7 @@ python explore_agent_rollout.py --checkpoint tmp/ppo_rooms/checkpoint_best --env
 ```
 
 The rollout prints the cumulative reward, checkpoint coverage, checkpoint reward maximum, and accumulated shaping penalties.
-In the Pygame view, walls are black, unvisited checkpoints are red, and visited checkpoints turn green. Yellow rays show the robot's distance sensors. Green/blue motion marks show acceleration or braking, and orange arcs show turn commands.
+In the Pygame view, walls are black, unvisited checkpoints are red, and visited checkpoints turn green. Yellow rays show the robot's distance sensors. The GUI includes a legend for the map, sensor rays, ray hits, and motion overlays. Live labels near the robot show whether the policy is accelerating, braking, or turning; green/blue arrows pulse for acceleration or braking commands, orange arcs pulse for turn commands, and the dark arrow shows the actual velocity direction.
 
 ## Optional Baseline Task
 

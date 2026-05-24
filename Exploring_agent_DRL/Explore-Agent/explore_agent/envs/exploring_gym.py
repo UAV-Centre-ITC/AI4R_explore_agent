@@ -19,6 +19,10 @@ COLOR_RAY_HIT = (250, 230, 75)
 COLOR_THRUST = (35, 180, 80)
 COLOR_BRAKE = (45, 120, 230)
 COLOR_TURN = (245, 170, 35)
+COLOR_VELOCITY = (50, 50, 50)
+COLOR_PANEL_BG = (255, 255, 255)
+COLOR_PANEL_BORDER = (70, 70, 70)
+COLOR_TEXT = (19, 19, 41)
 
 COVERAGE_GOAL_SLOTS = 5
 COVERAGE_CELL_SIZE = int(80 * ROOMS_SCALE)
@@ -1276,36 +1280,63 @@ class ExploreDrone(gym.Env):
             accel = self.drone.last_accel_cmd
             turn = self.drone.last_turn_cmd
             speed = np.sqrt(self.drone.vel_x ** 2 + self.drone.vel_y ** 2)
+            pulse = 0.5 + 0.5 * np.sin(self.drone.framecount_total * 0.45)
+
+            def draw_action_label(text, color, pos):
+                font = pygame.font.Font(pygame.font.match_font('consolas'), 18)
+                label = font.render(text, True, color)
+                rect = label.get_rect(center=pos)
+                bg = rect.inflate(10, 6)
+                bg.clamp_ip(self.win.get_rect())
+                rect.center = bg.center
+                pygame.draw.rect(self.win, COLOR_PANEL_BG, bg)
+                pygame.draw.rect(self.win, color, bg, 2)
+                self.win.blit(label, rect)
+
+            def draw_arrow(start, end, color, width):
+                pygame.draw.line(self.win, color, start, end, width)
+                angle = np.arctan2(start[1] - end[1], end[0] - start[0])
+                head_len = 14 + int(5 * pulse)
+                for offset in (0.65, -0.65):
+                    head = (
+                        int(end[0] - head_len * np.cos(angle + offset)),
+                        int(end[1] + head_len * np.sin(angle + offset)),
+                    )
+                    pygame.draw.line(self.win, color, end, head, max(2, width - 2))
 
             # Velocity vector shows actual motion, independent from the commanded action.
             if speed > 0.1:
                 vx_end = (int(x + self.drone.vel_x * 8), int(y + self.drone.vel_y * 8))
-                pygame.draw.line(self.win, (50, 50, 50), (x, y), vx_end, 4)
-                pygame.draw.circle(self.win, (50, 50, 50), vx_end, 5)
+                draw_arrow((x, y), vx_end, COLOR_VELOCITY, 4)
+                pygame.draw.circle(self.win, COLOR_VELOCITY, vx_end, 5)
 
             # Acceleration/braking command indicator.
             if abs(accel) > 0.05:
                 direction = 1 if accel > 0 else -1
                 color = COLOR_THRUST if accel > 0 else COLOR_BRAKE
+                label = "ACCEL" if accel > 0 else "BRAKE"
                 start = (
                     int(x - direction * 22 * np.cos(heading)),
                     int(y + direction * 22 * np.sin(heading)),
                 )
                 end = (
-                    int(x - direction * (58 + 28 * abs(accel)) * np.cos(heading)),
-                    int(y + direction * (58 + 28 * abs(accel)) * np.sin(heading)),
+                    int(x - direction * (58 + 28 * abs(accel) + 12 * pulse) * np.cos(heading)),
+                    int(y + direction * (58 + 28 * abs(accel) + 12 * pulse) * np.sin(heading)),
                 )
-                pygame.draw.line(self.win, color, start, end, 8)
+                draw_arrow(start, end, color, 8)
                 pygame.draw.circle(self.win, color, end, 9)
+                draw_action_label(label, color, (end[0], end[1] - 28))
 
             # Turning command indicator.
             if abs(turn) > 0.05:
-                radius = 48
+                radius = 48 + int(8 * pulse)
                 rect = pygame.Rect(x - radius, y - radius, 2 * radius, 2 * radius)
                 if turn > 0:
                     start_ang, end_ang = heading - 0.2, heading + 1.0
+                    label = "TURN R"
                 else:
                     start_ang, end_ang = heading - 1.0, heading + 0.2
+                    label = "TURN L"
                 pygame.draw.arc(self.win, COLOR_TURN, rect, start_ang, end_ang, 5)
                 tip_ang = end_ang if turn > 0 else start_ang
                 tip = (
@@ -1313,6 +1344,7 @@ class ExploreDrone(gym.Env):
                     int(y - radius * np.sin(tip_ang)),
                 )
                 pygame.draw.circle(self.win, COLOR_TURN, tip, 7)
+                draw_action_label(label, COLOR_TURN, (tip[0], tip[1] + 28))
 
         def draw_drone():
             self.drone.img = self.drone_IMG[self.drone.action_state]
@@ -1381,13 +1413,55 @@ class ExploreDrone(gym.Env):
                       font_name=pygame.font.match_font('consolas'),
                       position='topleft'):
             font = pygame.font.Font(font_name, size)
-            text_surface = font.render(text, True, (19, 19, 41))
+            text_surface = font.render(text, True, COLOR_TEXT)
             text_rect = text_surface.get_rect()
             if position == 'topleft':
                 text_rect.topleft = (x, y)
             if position == 'topright':
                 text_rect.topright = (x, y)
             surface.blit(text_surface, text_rect)
+
+        def draw_legend():
+            items = [
+                ("wall", COLOR_BLACK, "line"),
+                ("checkpoint", COLOR_CHECKPOINT, "line"),
+                ("visited", COLOR_VISITED, "line"),
+                ("sensor ray", COLOR_RAY, "line"),
+                ("ray hit", COLOR_RAY_HIT, "dot"),
+                ("accel", COLOR_THRUST, "arrow"),
+                ("brake", COLOR_BRAKE, "arrow"),
+                ("turn", COLOR_TURN, "arc"),
+                ("velocity", COLOR_VELOCITY, "arrow"),
+            ]
+            row_h = 24
+            pad = 12
+            width = 240
+            height = pad * 2 + row_h * (len(items) + 1)
+            x0 = WINDOW_WIDTH - width - 18
+            y0 = 64
+            panel = pygame.Surface((width, height), pygame.SRCALPHA)
+            panel.fill((255, 255, 255, 245))
+            self.win.blit(panel, (x0, y0))
+            pygame.draw.rect(self.win, COLOR_PANEL_BORDER, (x0, y0, width, height), 2)
+            draw_text(self.win, text="legend", size=18, x=x0 + pad, y=y0 + 8)
+            y = y0 + pad + row_h
+            for label, color, kind in items:
+                sx = x0 + pad
+                sy = y + row_h // 2
+                if kind == "line":
+                    pygame.draw.line(self.win, color, (sx, sy), (sx + 42, sy), 5)
+                elif kind == "dot":
+                    pygame.draw.circle(self.win, color, (sx + 20, sy), 7)
+                    pygame.draw.circle(self.win, COLOR_BLACK, (sx + 20, sy), 7, 2)
+                elif kind == "arc":
+                    pygame.draw.arc(self.win, color, pygame.Rect(sx + 4, sy - 12, 28, 24), -0.6, 1.2, 4)
+                    pygame.draw.circle(self.win, color, (sx + 31, sy - 3), 5)
+                else:
+                    pygame.draw.line(self.win, color, (sx, sy), (sx + 42, sy), 5)
+                    pygame.draw.line(self.win, color, (sx + 42, sy), (sx + 30, sy - 8), 4)
+                    pygame.draw.line(self.win, color, (sx + 42, sy), (sx + 30, sy + 8), 4)
+                draw_text(self.win, text=label, size=16, x=x0 + 66, y=y + 2)
+                y += row_h
 
         def get_gui_value(value: str):
             if value == 'reward_total':
@@ -1448,6 +1522,7 @@ class ExploreDrone(gym.Env):
                 # draw value
                 draw_text(self.win, text=get_gui_value(key),
                           size=30, x=gui_x_list[i], y=20, position=pos)
+            draw_legend()
 
         # ─── RENDER GAME ─────────────────────────────────────────────────
         pygame.event.pump()
