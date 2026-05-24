@@ -13,6 +13,7 @@ ECHO_MAX_DISTANCE = 500 * ROOMS_SCALE
 GOAL_DISTANCE_NORM = 700 * ROOMS_SCALE
 RENDER_RAY_LENGTH = 360 * ROOMS_SCALE
 VELOCITY_NORM = 50 * ROOMS_SCALE
+ROBOT_RENDER_SCALE = 0.75
 
 COLOR_BLACK = (0, 0, 0)
 COLOR_CHECKPOINT = (220, 35, 20)
@@ -37,6 +38,7 @@ COVERAGE_COLLISION_PENALTY_RATE = 0.4
 COVERAGE_PROGRESS_PENALTY = 0.002
 COVERAGE_PROGRESS_MARGIN = 0.5
 CHECKPOINT_HIT_RADIUS = 25
+CHECKPOINT_VISIBILITY_WALL_MARGIN = 10
 
 
 
@@ -115,6 +117,18 @@ def line_intersect(x1, y1, x2, y2, x3, y3, x4, y4):
     x = x1 + s * (x2 - x1)
     y = y1 + s * (y2 - y1)
     return x, y
+
+
+def line_intersect_tolerant(x1, y1, x2, y2, x3, y3, x4, y4, eps=1e-6):
+    d = (y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1)
+    if abs(d) < eps:
+        return None
+    s = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / d
+    t = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / d
+    if not (-eps <= s <= 1 + eps and -eps <= t <= 1 + eps):
+        return None
+    s = max(0, min(1, s))
+    return x1 + s * (x2 - x1), y1 + s * (y2 - y1)
 
 
 def line_intersect_front(x1, y1, x2, y2, x3, y3, x4, y4):
@@ -664,14 +678,17 @@ class Drone:
         self.goal_vector_last = self.env.get_goal_line(self.level - 1)
 
     def is_goal_visible(self, point):
+        return self.is_point_visible(point, margin=CHECKPOINT_VISIBILITY_WALL_MARGIN)
+
+    def is_point_visible(self, point, margin=3):
         distance_to_goal = np.sqrt((self.x - point[0]) ** 2 + (self.y - point[1]) ** 2)
         sight_line = [self.x, self.y, point[0], point[1]]
         for wall in self.env.level_collision_vectors:
-            result = line_intersect(*sight_line, *wall)
+            result = line_intersect_tolerant(*sight_line, *wall)
             if result is None:
                 continue
             distance_to_wall = np.sqrt((self.x - result[0]) ** 2 + (self.y - result[1]) ** 2)
-            if distance_to_wall < distance_to_goal - 3:
+            if distance_to_wall < distance_to_goal - margin:
                 return False
         return True
 
@@ -931,7 +948,11 @@ class Drone:
                 if result is None:
                     continue
                 distance = np.sqrt((self.x - result[0]) ** 2 + (self.y - result[1]) ** 2)
-                if distance <= distances[i] + 1e-6 and distance < nearest_checkpoint:
+                if (
+                    distance < distances[i] - CHECKPOINT_VISIBILITY_WALL_MARGIN
+                    and self.is_point_visible(result, margin=CHECKPOINT_VISIBILITY_WALL_MARGIN)
+                    and distance < nearest_checkpoint
+                ):
                     nearest_checkpoint = distance
                     checkpoint_points[i, :] = result
                     checkpoint_indices[i] = int(goal_index)
@@ -1248,16 +1269,25 @@ class ExploreDrone(gym.Env):
 
         def init_renderer(self):
             pygame.init()
+            def load_robot_image(filename):
+                image = pygame.transform.scale2x(pygame.image.load(os.path.join('imgs', filename)))
+                width, height = image.get_size()
+                return pygame.transform.smoothscale(
+                    image,
+                    (int(width * ROBOT_RENDER_SCALE), int(height * ROBOT_RENDER_SCALE)),
+                )
+
             # self.drone_IMG = [pygame.transform.scale2x(pygame.image.load(os.path.join('imgs', 'drone_no_power.png'))),
             #                   pygame.transform.scale2x(pygame.image.load(os.path.join(
             #                       'imgs', 'drone_power.png'))), pygame.transform.scale2x(pygame.image.load(os.path.join(
             #         'imgs', 'drone_power_front.png'))), pygame.transform.scale2x(pygame.image.load(os.path.join(
             #         'imgs', 'drone_black.png')))]
-            self.drone_IMG = [pygame.transform.scale2x(pygame.image.load(os.path.join('imgs', 'tank_no_power.png'))),
-                              pygame.transform.scale2x(pygame.image.load(os.path.join(
-                                  'imgs', 'tank_power.png'))), pygame.transform.scale2x(pygame.image.load(os.path.join(
-                    'imgs', 'tank_power_front.png'))), pygame.transform.scale2x(pygame.image.load(os.path.join(
-                    'imgs', 'tank_black.png')))]
+            self.drone_IMG = [
+                load_robot_image('tank_no_power.png'),
+                load_robot_image('tank_power.png'),
+                load_robot_image('tank_power_front.png'),
+                load_robot_image('tank_black.png'),
+            ]
             self.BG_IMG = pygame.transform.scale(
                 pygame.image.load(os.path.join('imgs', 'white_bg.jpg')),
                 (WINDOW_WIDTH, WINDOW_HEIGHT),
@@ -1345,20 +1375,18 @@ class ExploreDrone(gym.Env):
 
             # Acceleration/braking command indicator.
             if abs(accel) > 0.05:
-                direction = 1 if accel > 0 else -1
                 color = COLOR_THRUST if accel > 0 else COLOR_BRAKE
                 label = "ACCEL" if accel > 0 else "BRAKE"
-                start = (
-                    int(x - direction * 22 * np.cos(heading)),
-                    int(y + direction * 22 * np.sin(heading)),
-                )
-                end = (
-                    int(x - direction * (58 + 28 * abs(accel) + 12 * pulse) * np.cos(heading)),
-                    int(y + direction * (58 + 28 * abs(accel) + 12 * pulse) * np.sin(heading)),
-                )
+                forward = np.array([np.cos(heading), -np.sin(heading)])
+                command_dir = forward if accel > 0 else -forward
+                length = 58 + 28 * abs(accel) + 12 * pulse
+                start_vec = np.array([x, y], dtype=float) + command_dir * 22
+                end_vec = np.array([x, y], dtype=float) + command_dir * length
+                start = (int(start_vec[0]), int(start_vec[1]))
+                end = (int(end_vec[0]), int(end_vec[1]))
                 draw_arrow(start, end, color, 8)
                 pygame.draw.circle(self.win, color, end, 9)
-                draw_action_label(label, color, (end[0], end[1] - 28))
+                draw_action_label(label, color, (end[0], end[1]))
 
             # Turning command indicator.
             if abs(turn) > 0.05:
