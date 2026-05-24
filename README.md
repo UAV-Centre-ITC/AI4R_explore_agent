@@ -76,7 +76,7 @@ where:
 - `alpha` is the angle between the robot heading and its velocity direction;
 - `beta` is the angle between the robot heading and the next goal/checkpoint direction.
 
-In the default `coverage` task, the observation is extended with five unvisited checkpoint slots. Each slot contains the relative angle, distance, and visibility flag for the midpoint of one nearby unvisited checkpoint. The final two values report overall checkpoint progress and how long the robot has gone without collecting a new checkpoint. This is different from the older racing-track task, where one next checkpoint was enough. The midpoint target keeps the policy from aiming at checkpoint endpoints close to walls or already visited gates.
+In the default `coverage` task, the observation is extended with five unvisited checkpoint slots. Each slot contains the relative angle, distance, and visibility flag for a reachable visible point sampled along one nearby unvisited checkpoint. The final two values report overall checkpoint progress and how long the robot has gone without collecting a new checkpoint. This is different from the older racing-track task, where one next checkpoint was enough. Sampling the checkpoint target keeps the policy from aiming at endpoints close to walls or already visited gates.
 
 The observation values are normalized to match the declared Gymnasium observation space.
 
@@ -92,7 +92,7 @@ not approaching a visible unvisited checkpoint gives -0.002 per step
 wall-contact penalty starts at -0.2 and converges to -0.5 cumulatively between checkpoints
 ```
 
-The coverage task also adds penalties when the robot hovers in an already visited coarse map cell or fails to approach a visible unvisited checkpoint. If both conditions hold, the combined shaping penalty is `-0.006` per step, so it becomes visible during long 1000-step experiments without overpowering the `+0.5` checkpoint reward. Wall contact blocks the robot and adds a bounded escalating penalty, but it does not end the default rooms episode. The wall-contact penalty state resets after a new checkpoint is reached. This discourages standing still or repeatedly driving into walls, while the checkpoint count remains the main evaluation score.
+The coverage task also adds penalties when the robot hovers in an already visited coarse map cell or fails to approach a visible unvisited checkpoint. If both conditions hold, the combined shaping penalty is `-0.006` per step, so it becomes visible during long 1000-step experiments without overpowering the `+0.5` checkpoint reward. Checkpoint collection uses a map-scaled hit radius and a wall visibility check, so the robot can collect a gate when it reaches it but should not collect or target gates through walls. Wall contact blocks the robot and adds a bounded escalating penalty, but it does not end the default rooms episode. The wall-contact penalty state resets after a new checkpoint is reached. This discourages standing still or repeatedly driving into walls, while the checkpoint count remains the main evaluation score.
 
 The episode ends when the robot collects all checkpoints or reaches the step limit. The default `rooms` map has 20 checkpoints. Each checkpoint is worth `0.5`, so the checkpoint reward maximum is `10.0`. The training return can be lower if the robot hits walls or spends time hovering without exploring. The default challenge uses `max_steps=400`, which corresponds to about 20 seconds in the visual rollout with the default sleep value.
 

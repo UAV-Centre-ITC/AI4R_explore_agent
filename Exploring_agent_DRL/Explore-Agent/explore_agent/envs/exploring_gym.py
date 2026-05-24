@@ -37,8 +37,11 @@ COVERAGE_COLLISION_PENALTY_CAP = 0.5
 COVERAGE_COLLISION_PENALTY_RATE = 0.4
 COVERAGE_PROGRESS_PENALTY = 0.002
 COVERAGE_PROGRESS_MARGIN = 0.5
-CHECKPOINT_HIT_RADIUS = 25
-CHECKPOINT_VISIBILITY_WALL_MARGIN = 10
+CHECKPOINT_HIT_RADIUS = int(28 * ROOMS_SCALE)
+CHECKPOINT_VISIBILITY_WALL_MARGIN = int(14 * ROOMS_SCALE)
+CHECKPOINT_REWARD_WALL_MARGIN = 3
+CHECKPOINT_TARGET_SAMPLES = 7
+CHECKPOINT_TARGET_TRIM = 0.12
 
 
 
@@ -82,6 +85,17 @@ def point_to_line_segment_distance(x, y, x1, y1, x2, y2):
     return math.sqrt((x - xx) ** 2 + (y - yy) ** 2)
 
 
+def line_segment_distance(x1, y1, x2, y2, x3, y3, x4, y4):
+    if line_intersect_tolerant(x1, y1, x2, y2, x3, y3, x4, y4) is not None:
+        return 0
+    return min(
+        point_to_line_segment_distance(x1, y1, x3, y3, x4, y4),
+        point_to_line_segment_distance(x2, y2, x3, y3, x4, y4),
+        point_to_line_segment_distance(x3, y3, x1, y1, x2, y2),
+        point_to_line_segment_distance(x4, y4, x1, y1, x2, y2),
+    )
+
+
 def closest_point_on_line_segment(x, y, x1, y1, x2, y2):
     A = x - x1
     B = y - y1
@@ -94,6 +108,18 @@ def closest_point_on_line_segment(x, y, x1, y1, x2, y2):
 
 def line_segment_midpoint(x1, y1, x2, y2):
     return (x1 + x2) / 2, (y1 + y2) / 2
+
+
+def point_on_line_segment(x1, y1, x2, y2, t):
+    return x1 + t * (x2 - x1), y1 + t * (y2 - y1)
+
+
+def point_line_segment_fraction(px, py, x1, y1, x2, y2):
+    dx, dy = x2 - x1, y2 - y1
+    len_sq = dx * dx + dy * dy
+    if len_sq == 0:
+        return 0
+    return ((px - x1) * dx + (py - y1) * dy) / len_sq
 
 
 def wrap_angle(angle):
@@ -657,15 +683,27 @@ class Drone:
         candidates = []
         for goal_index in unvisited:
             goal = self.env.get_goal_line(goal_index)
-            px, py = line_segment_midpoint(*goal)
+            px, py, visible = self.get_checkpoint_target_point(goal)
             dx, dy = px - self.x, py - self.y
             distance = np.sqrt(dx ** 2 + dy ** 2)
             goal_ang = np.arctan2(-dy, dx)
             goal_ang_diff = wrap_angle(self.ang - goal_ang)
-            visible = self.is_goal_visible((px, py))
             candidates.append((not visible, distance, int(goal_index), goal_ang_diff, visible))
         candidates.sort(key=lambda item: (item[0], item[1]))
         return candidates
+
+    def get_checkpoint_target_point(self, goal):
+        midpoint = line_segment_midpoint(*goal)
+        visible_points = []
+        for t in np.linspace(CHECKPOINT_TARGET_TRIM, 1 - CHECKPOINT_TARGET_TRIM, CHECKPOINT_TARGET_SAMPLES):
+            px, py = point_on_line_segment(*goal, t)
+            if self.is_goal_visible((px, py)):
+                distance = np.sqrt((self.x - px) ** 2 + (self.y - py) ** 2)
+                visible_points.append((distance, px, py))
+        if visible_points:
+            _, px, py = min(visible_points, key=lambda item: item[0])
+            return px, py, True
+        return midpoint[0], midpoint[1], False
 
     def update_goal_vectors(self):
         if self.game.reward_mode == 'coverage':
@@ -684,11 +722,14 @@ class Drone:
         distance_to_goal = np.sqrt((self.x - point[0]) ** 2 + (self.y - point[1]) ** 2)
         sight_line = [self.x, self.y, point[0], point[1]]
         for wall in self.env.level_collision_vectors:
-            result = line_intersect_tolerant(*sight_line, *wall)
-            if result is None:
+            if line_segment_distance(*sight_line, *wall) >= margin:
                 continue
-            distance_to_wall = np.sqrt((self.x - result[0]) ** 2 + (self.y - result[1]) ** 2)
-            if distance_to_wall < distance_to_goal - margin:
+            result = line_intersect_tolerant(*sight_line, *wall)
+            if result is not None:
+                distance_to_wall = np.sqrt((self.x - result[0]) ** 2 + (self.y - result[1]) ** 2)
+                if distance_to_wall < distance_to_goal - margin:
+                    return False
+            else:
                 return False
         return True
 
@@ -852,9 +893,14 @@ class Drone:
             for i, goal in enumerate(self.env.goals):
                 if self.coverage_visited[i]:
                     continue
+                closest_point = closest_point_on_line_segment(self.x, self.y, *goal)
+                close_visible_hit = (
+                    distance_to_line_segment(self.x, self.y, *goal, d=CHECKPOINT_HIT_RADIUS)
+                    and self.is_point_visible(closest_point, margin=CHECKPOINT_REWARD_WALL_MARGIN)
+                )
                 hit_goal = (
                     line_intersect(*self.movement_vector, *goal) is not None
-                    or distance_to_line_segment(self.x, self.y, *goal, d=CHECKPOINT_HIT_RADIUS)
+                    or close_visible_hit
                 )
                 if hit_goal:
                     self.coverage_visited[i] = True
@@ -948,8 +994,10 @@ class Drone:
                 if result is None:
                     continue
                 distance = np.sqrt((self.x - result[0]) ** 2 + (self.y - result[1]) ** 2)
+                goal_fraction = point_line_segment_fraction(result[0], result[1], *goal)
                 if (
-                    distance < distances[i] - CHECKPOINT_VISIBILITY_WALL_MARGIN
+                    CHECKPOINT_TARGET_TRIM <= goal_fraction <= 1 - CHECKPOINT_TARGET_TRIM
+                    and distance < distances[i] - CHECKPOINT_VISIBILITY_WALL_MARGIN
                     and self.is_point_visible(result, margin=CHECKPOINT_VISIBILITY_WALL_MARGIN)
                     and distance < nearest_checkpoint
                 ):
