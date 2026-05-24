@@ -183,48 +183,60 @@ class Environment:
         ])
 
         self.rooms_line1_array_source = np.array([
-            # outer shell with side alcove
-            [420, 100, 1320, 100],
-            [1320, 100, 1320, 900],
-            [1320, 900, 250, 900],
-            [250, 900, 250, 500],
-            [250, 500, 420, 500],
-            [420, 500, 420, 100],
-            [420, 650, 420, 900],
+            # outer boundary
+            [120, 80, 1480, 80],
+            [1480, 80, 1480, 900],
+            [1480, 900, 120, 900],
+            [120, 900, 120, 80],
 
-            # upper internal room with a left-side doorway
-            [580, 250, 1140, 250],
-            [1140, 250, 1140, 500],
-            [1140, 500, 580, 500],
-            [580, 250, 580, 350],
-            [580, 420, 580, 500],
+            # left room column
+            [380, 80, 380, 330],
+            [380, 410, 380, 610],
+            [380, 690, 380, 740],
+            [380, 820, 380, 900],
+            [120, 570, 380, 570],
+            [120, 740, 380, 740],
 
-            # lower room dividers
-            [420, 650, 660, 650],
-            [730, 650, 820, 650],
-            [900, 650, 1160, 650],
-            [820, 650, 820, 900],
-            [1160, 650, 1160, 900],
+            # upper internal room with a doorway on the left
+            [580, 260, 1260, 260],
+            [1260, 260, 1260, 560],
+            [1260, 560, 580, 560],
+            [580, 260, 580, 360],
+            [580, 440, 580, 560],
+
+            # lower rooms
+            [380, 740, 660, 740],
+            [760, 740, 850, 740],
+            [980, 740, 1280, 740],
+            [820, 740, 820, 800],
+            [820, 860, 820, 900],
+            [1260, 740, 1260, 800],
+            [1260, 860, 1260, 900],
         ], dtype=float)
 
         self.rooms_line2_array_source = np.zeros((0, 4))
 
         self.rooms_goals_array_source = np.array([
-            [330, 540, 330, 860],
-            [420, 520, 420, 640],
-            [520, 140, 520, 620],
-            [580, 355, 580, 415],
-            [720, 300, 720, 470],
-            [900, 300, 900, 470],
-            [1090, 300, 1090, 470],
-            [600, 530, 600, 630],
-            [660, 650, 730, 650],
-            [520, 700, 520, 880],
-            [700, 700, 700, 880],
-            [820, 660, 900, 660],
-            [980, 700, 980, 880],
-            [1160, 660, 1160, 880],
-            [1240, 520, 1240, 880],
+            [130, 210, 370, 210],
+            [130, 500, 370, 500],
+            [130, 790, 370, 790],
+            [380, 330, 380, 410],
+            [380, 610, 380, 690],
+            [380, 740, 380, 820],
+            [500, 120, 570, 260],
+            [580, 360, 580, 440],
+            [820, 290, 820, 540],
+            [1060, 290, 1060, 540],
+            [1260, 560, 1470, 560],
+            [1270, 260, 1470, 90],
+            [800, 560, 800, 740],
+            [690, 740, 760, 740],
+            [880, 740, 980, 740],
+            [820, 800, 820, 860],
+            [530, 760, 530, 890],
+            [1150, 760, 1150, 890],
+            [1260, 800, 1260, 860],
+            [1280, 740, 1470, 740],
         ], dtype=float)
         self.load_level()
 
@@ -877,7 +889,7 @@ class ExploreDrone(gym.Env):
     # def reset_drone_state(self, x=200, y=100, ang=1e-9, vel_x=0, vel_y=0, level=0):  # ang=1e-10
     def reset_drone_state(self, x=300, y=200, ang=np.pi, vel_x=0, vel_y=0, level=0):  # ang=1e-10
         if self.env_name == 'rooms':
-            x, y, ang = 320, 780, 0
+            x, y, ang = 240, 830, 0
         elif self.env_name == 'random':
             x, y = WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2
         elif self.env_flipped:
@@ -981,6 +993,7 @@ class ExploreDrone(gym.Env):
                 "visited_checkpoints": int(self.drone.coverage_count),
                 "total_checkpoints": int(self.env.n_goals),
                 "coverage_ratio": float(self.drone.coverage_count / max(1, self.env.n_goals)),
+                "max_reward": int(self.env.n_goals),
             })
 
         # ─── RESET ITERATION VARIABLES ───────────────────────────────────
@@ -1038,7 +1051,7 @@ class ExploreDrone(gym.Env):
             # pygame.draw.lines(self.win, (178, 190, 181), False, self.env.line1_list, 7)
             # pygame.draw.lines(self.win, (178, 190, 181), False, self.env.line2_list, 7)
             for wall in self.env.level_collision_vectors:
-                pygame.draw.line(self.win, (178, 190, 181), wall[:2], wall[2:], 7)
+                pygame.draw.line(self.win, (0, 0, 0), wall[:2], wall[2:], 7)
 
         def draw_goal_next():
             goal = tuple(self.env.goals[self.drone.level, :])
@@ -1050,9 +1063,9 @@ class ExploreDrone(gym.Env):
         def draw_goal_all():
             for i in range(self.env.goals.shape[0]):
                 goal = tuple(self.env.goals[i, :])
-                color = (232, 154, 70)
+                color = (220, 35, 20)
                 if self.reward_mode == 'coverage' and self.drone.coverage_visited[i]:
-                    color = (155, 160, 165)
+                    color = (35, 170, 70)
                 pygame.draw.lines(self.win, color, False, (goal[0:2], goal[2:4]), 7)
 
         def draw_drone():
@@ -1137,7 +1150,7 @@ class ExploreDrone(gym.Env):
         self.win.blit(self.BG_IMG, (0, 0))
         if self.gui_draw_goal_all:
             draw_goal_all()
-        if self.gui_draw_goal_next:
+        if self.gui_draw_goal_next and self.reward_mode != 'coverage':
             draw_goal_next()
         if self.gui_draw_echo_points:
             draw_echo_collision_points()

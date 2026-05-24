@@ -88,7 +88,7 @@ The default task uses `reward_mode="coverage"`. Each checkpoint gives reward onl
 -1.0 for collision
 ```
 
-The episode ends when the robot collides, collects all checkpoints, or reaches the step limit. The default challenge uses `max_steps=400`, which corresponds to about 20 seconds in the visual rollout with the default sleep value.
+The episode ends when the robot collides, collects all checkpoints, or reaches the step limit. The maximum reward is equal to the number of checkpoints in the map. The default `rooms` map has 20 checkpoints, so the maximum reward is 20 if the robot visits every checkpoint without collision. The default challenge uses `max_steps=400`, which corresponds to about 20 seconds in the visual rollout with the default sleep value.
 
 ## Student Task
 
@@ -261,8 +261,8 @@ Terminal-only rollout check:
 python explore_agent_rollout.py --checkpoint tmp/ppo_rooms/checkpoint_best --env-name rooms --reward-mode coverage --max-steps 400 --steps 400 --sleep 0 --no-gui
 ```
 
-The rollout prints the cumulative reward and checkpoint coverage, for example `checkpoints 10/17`.
-In the Pygame view, unvisited checkpoints are orange, visited checkpoints are grey, and the next target checkpoint is green.
+The rollout prints the cumulative reward, checkpoint coverage, and maximum reward, for example `checkpoints 10/20; max reward 20`.
+In the Pygame view, walls are black, unvisited checkpoints are red, and visited checkpoints turn green.
 
 ## Optional Baseline Task
 
