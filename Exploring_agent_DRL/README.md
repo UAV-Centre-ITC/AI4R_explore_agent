@@ -1,6 +1,6 @@
 ## AIAR RL practical assignment: 2D exploring robot
 
-This folder contains the code for the 2D exploration practical. The default task is a multi-room checkpoint coverage challenge trained with PPO.
+This folder contains the code for the 2D exploration practical. The default task is a multi-room checkpoint coverage challenge trained with PPO. The rooms map is scaled larger than the original racing-track exercise so the robot has clearer visual clearance from walls during rollout inspection.
 
 ## Platform support
 

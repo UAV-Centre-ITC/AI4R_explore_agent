@@ -2,8 +2,14 @@ import gymnasium as gym
 # import gym
 import numpy as np
 import math
-WINDOW_WIDTH = 1600
-WINDOW_HEIGHT = 1000
+ROOMS_SCALE = 2.0
+WINDOW_WIDTH = int(1600 * ROOMS_SCALE)
+WINDOW_HEIGHT = int(1000 * ROOMS_SCALE)
+ECHO_RAY_LENGTH = 1500 * ROOMS_SCALE
+ECHO_MAX_DISTANCE = 500 * ROOMS_SCALE
+GOAL_DISTANCE_NORM = 700 * ROOMS_SCALE
+RENDER_RAY_LENGTH = 360 * ROOMS_SCALE
+VELOCITY_NORM = 50 * ROOMS_SCALE
 
 COLOR_BLACK = (0, 0, 0)
 COLOR_CHECKPOINT = (220, 35, 20)
@@ -15,7 +21,7 @@ COLOR_BRAKE = (45, 120, 230)
 COLOR_TURN = (245, 170, 35)
 
 COVERAGE_GOAL_SLOTS = 5
-COVERAGE_CELL_SIZE = 80
+COVERAGE_CELL_SIZE = int(80 * ROOMS_SCALE)
 COVERAGE_HOVER_SPEED_THRESHOLD = 0.25
 COVERAGE_HOVER_PENALTY = 0.002
 COVERAGE_COLLISION_PENALTY = 0.02
@@ -295,6 +301,9 @@ class Environment:
             line1 = self.rooms_line1_array_source.copy()
             line2 = self.rooms_line2_array_source.copy()
             goals = self.rooms_goals_array_source.copy()
+            line1 *= ROOMS_SCALE
+            line2 *= ROOMS_SCALE
+            goals *= ROOMS_SCALE
 
         # environment = empty: level with no boundaries
         elif self.game.env_name == 'empty':
@@ -458,7 +467,7 @@ class Environment:
 
 
 class Drone:
-    VEL_MAX = 12
+    VEL_MAX = 12 * ROOMS_SCALE
     DRAG = 0.98
     # ROT_VEL = 1.28
     # ROT_VEL = 0.64
@@ -466,7 +475,7 @@ class Drone:
     ROT_VEL = 0.08
     # ROT_VEL = 0.04
     # ACCELERATION = 1.0
-    ACCELERATION = 0.5
+    ACCELERATION = 0.5 * ROOMS_SCALE
     # ACCELERATION = 0.3
     # ACCELERATION = 0.2
     # ACCELERATION = 0.05
@@ -655,7 +664,11 @@ class Drone:
         for slot, (_, distance, _, goal_ang_diff, visible) in enumerate(candidates[:COVERAGE_GOAL_SLOTS]):
             base = slot * 3
             features[base] = np.interp(goal_ang_diff, [-np.pi, np.pi], [-1, 1])
-            features[base + 1] = np.interp(min(distance, 700), [0, 700], [-1, 1])
+            features[base + 1] = np.interp(
+                min(distance, GOAL_DISTANCE_NORM),
+                [0, GOAL_DISTANCE_NORM],
+                [-1, 1],
+            )
             features[base + 2] = 1.0 if visible else -1.0
 
         self.coverage_goal_features = features
@@ -670,18 +683,18 @@ class Drone:
         matrix[:, 0] = int(self.x)
         matrix[:, 1] = int(self.y)
         # straight angle
-        matrix[n_sideangles, 2] = int(self.x + 1500 * np.cos(self.ang))
-        matrix[n_sideangles, 3] = int(self.y - 1500 * np.sin(self.ang))
+        matrix[n_sideangles, 2] = int(self.x + ECHO_RAY_LENGTH * np.cos(self.ang))
+        matrix[n_sideangles, 3] = int(self.y - ECHO_RAY_LENGTH * np.sin(self.ang))
         # angles from 90 deg to 0
         # ignore first angle
         angles = np.linspace(0, np.pi / 2, n_sideangles + 1)
         for i in range(n_sideangles):
             # first side
-            matrix[i, 2] = int(self.x + 1500 * np.cos(self.ang + angles[i + 1]))  # x2
-            matrix[i, 3] = int(self.y - 1500 * np.sin(self.ang + angles[i + 1]))  # y2
-            # second side
-            matrix[-(i + 1), 2] = int(self.x + 1500 * np.cos(self.ang - angles[i + 1]))  # x2
-            matrix[-(i + 1), 3] = int(self.y - 1500 * np.sin(self.ang - angles[i + 1]))  # y2
+                matrix[i, 2] = int(self.x + ECHO_RAY_LENGTH * np.cos(self.ang + angles[i + 1]))  # x2
+                matrix[i, 3] = int(self.y - ECHO_RAY_LENGTH * np.sin(self.ang + angles[i + 1]))  # y2
+                # second side
+                matrix[-(i + 1), 2] = int(self.x + ECHO_RAY_LENGTH * np.cos(self.ang - angles[i + 1]))  # x2
+                matrix[-(i + 1), 3] = int(self.y - ECHO_RAY_LENGTH * np.sin(self.ang - angles[i + 1]))  # y2
         self.echo_vectors = matrix
 
     def rotate(self, rotate):  # input: action1
@@ -709,7 +722,7 @@ class Drone:
     def update_observations(self):
         # ─── OBSERVATION 8: VELOCITY ─────────────────────────────────────
         vel = np.sqrt(self.vel_x ** 2 + self.vel_y ** 2)
-        self.vel_interp = np.interp(vel, [0, 50], [-1, 1])
+        self.vel_interp = np.interp(vel, [0, VELOCITY_NORM], [-1, 1])
 
         # ─── OBSERVATION 9: VELOCITY ANGLE ───────────────────────────────
         # get angular difference
@@ -852,7 +865,7 @@ class Drone:
 
     def check_collision_echo(self):
         # max_distance: Distance value maps to observation=1 if distance >= max_distance
-        max_distance = 500
+        max_distance = ECHO_MAX_DISTANCE
         points = np.full((self.N_ECHO, 2), self.x)  # points for visualiziation
         points[:, 1] = self.y
         distances = np.full((self.N_ECHO), max_distance)  # distances for observation
@@ -875,10 +888,9 @@ class Drone:
 
         self.echo_collision_points = points
         # ─── NORMALIZE DISTANCES ─────────────────────────────────────────
-        # linear mapping from 0,1000 to -1,1
-        # distance 0 becomes -1, distance 1000 becomes +1
+        # linear mapping from 0 to ECHO_MAX_DISTANCE into [-1, 1]
         # values always in range [-1,1]
-        self.echo_collision_distances_interp = np.interp(distances, [0, 500], [-1, 1])
+        self.echo_collision_distances_interp = np.interp(distances, [0, ECHO_MAX_DISTANCE], [-1, 1])
 
 
 class ExploreDrone(gym.Env):
@@ -1046,7 +1058,7 @@ class ExploreDrone(gym.Env):
     # def reset_drone_state(self, x=200, y=100, ang=1e-9, vel_x=0, vel_y=0, level=0):  # ang=1e-10
     def reset_drone_state(self, x=300, y=200, ang=np.pi, vel_x=0, vel_y=0, level=0):  # ang=1e-10
         if self.env_name == 'rooms':
-            x, y, ang = 240, 830, 0
+            x, y, ang = 240 * ROOMS_SCALE, 830 * ROOMS_SCALE, 0
         elif self.env_name == 'random':
             x, y = WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2
         elif self.env_flipped:
@@ -1187,7 +1199,10 @@ class ExploreDrone(gym.Env):
                                   'imgs', 'tank_power.png'))), pygame.transform.scale2x(pygame.image.load(os.path.join(
                     'imgs', 'tank_power_front.png'))), pygame.transform.scale2x(pygame.image.load(os.path.join(
                     'imgs', 'tank_black.png')))]
-            self.BG_IMG = pygame.image.load(os.path.join('imgs', 'white_bg.jpg'))
+            self.BG_IMG = pygame.transform.scale(
+                pygame.image.load(os.path.join('imgs', 'white_bg.jpg')),
+                (WINDOW_WIDTH, WINDOW_HEIGHT),
+            )
             pygame.display.set_caption("Exploring robot")
             self.clock = pygame.time.Clock()
             self.win = pygame.display.set_mode(
@@ -1309,7 +1324,7 @@ class ExploreDrone(gym.Env):
 
         def draw_echo_vector():
             n = self.drone.N_ECHO
-            visual_ray_length = 360
+            visual_ray_length = RENDER_RAY_LENGTH
             for i, vector in enumerate(self.drone.echo_vectors):
                 start = vector[0:2].astype(float)
                 ray_end = vector[2:4].astype(float)
@@ -1336,7 +1351,7 @@ class ExploreDrone(gym.Env):
             for point in self.drone.echo_collision_points:
                 point = point.astype(float)
                 hit_distance = np.linalg.norm(point - start)
-                if hit_distance <= 2 or hit_distance > 360 or np.allclose(point, [0, 0]):
+                if hit_distance <= 2 or hit_distance > RENDER_RAY_LENGTH or np.allclose(point, [0, 0]):
                     continue
                 pygame.draw.circle(self.win, COLOR_RAY_HIT, (int(point[0]), int(point[1])), 7)
                 pygame.draw.circle(self.win, COLOR_BLACK, (int(point[0]), int(point[1])), 7, 2)
