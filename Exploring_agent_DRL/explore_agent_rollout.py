@@ -30,7 +30,9 @@ def parse_args():
     parser.add_argument("--reward-mode", default="coverage", choices=["dynamic", "continuous", "static", "coverage"])
     parser.add_argument("--max-steps", type=int, default=400)
     parser.add_argument("--ray-temp-dir", default=str(Path(tempfile.gettempdir()) / "aiar_ray"))
-    parser.add_argument("--no-gui", action="store_true", help="Run rollout without opening the Pygame window.")
+    gui_group = parser.add_mutually_exclusive_group()
+    gui_group.add_argument("--gui", action="store_true", help="Open the Pygame window during rollout.")
+    gui_group.add_argument("--no-gui", action="store_true", help="Run rollout without opening the Pygame window.")
     return parser.parse_args()
 
 

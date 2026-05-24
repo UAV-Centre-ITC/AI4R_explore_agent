@@ -230,7 +230,7 @@ tmp/ppo_rooms/checkpoint_best
 ## Test a trained PPO checkpoint
 
 ```bash
-python explore_agent_rollout.py --checkpoint tmp/ppo_rooms/checkpoint_best --env-name rooms --reward-mode coverage --max-steps 400
+python explore_agent_rollout.py --checkpoint tmp/ppo_rooms/checkpoint_best --env-name rooms --reward-mode coverage --max-steps 400 --gui
 ```
 
 The rollout opens the Pygame window and prints the cumulative reward and checkpoint coverage when the episode ends. Unvisited checkpoints are orange, visited checkpoints are grey, and the next target checkpoint is green.

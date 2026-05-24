@@ -252,7 +252,7 @@ tmp/ppo_rooms/checkpoint_best
 Visual rollout:
 
 ```bash
-python explore_agent_rollout.py --checkpoint tmp/ppo_rooms/checkpoint_best --env-name rooms --reward-mode coverage --max-steps 400
+python explore_agent_rollout.py --checkpoint tmp/ppo_rooms/checkpoint_best --env-name rooms --reward-mode coverage --max-steps 400 --gui
 ```
 
 Terminal-only rollout check:
