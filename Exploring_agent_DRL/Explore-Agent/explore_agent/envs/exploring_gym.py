@@ -2,7 +2,7 @@ import gymnasium as gym
 # import gym
 import numpy as np
 import math
-ROOMS_SCALE = 2.0
+ROOMS_SCALE = 1.5
 WINDOW_WIDTH = int(1600 * ROOMS_SCALE)
 WINDOW_HEIGHT = int(1000 * ROOMS_SCALE)
 ECHO_RAY_LENGTH = 1500 * ROOMS_SCALE
