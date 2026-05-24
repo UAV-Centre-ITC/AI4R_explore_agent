@@ -40,8 +40,10 @@ COVERAGE_COLLISION_PENALTY_RATE = 0.4
 COVERAGE_PROGRESS_PENALTY = 0.002
 COVERAGE_PROGRESS_MARGIN = 0.5
 CHECKPOINT_VISIBILITY_WALL_MARGIN = int(14 * ROOMS_SCALE)
+CHECKPOINT_CROSS_TOLERANCE = int(10 * ROOMS_SCALE)
 CHECKPOINT_TARGET_SAMPLES = 7
 CHECKPOINT_TARGET_TRIM = 0.12
+CHECKPOINT_CROSS_TRIM = 0.04
 
 
 
@@ -120,6 +122,14 @@ def point_line_segment_fraction(px, py, x1, y1, x2, y2):
     if len_sq == 0:
         return 0
     return ((px - x1) * dx + (py - y1) * dy) / len_sq
+
+
+def signed_distance_to_line(px, py, x1, y1, x2, y2):
+    dx, dy = x2 - x1, y2 - y1
+    length = math.sqrt(dx * dx + dy * dy)
+    if length == 0:
+        return 0
+    return ((px - x1) * dy - (py - y1) * dx) / length
 
 
 def wrap_angle(angle):
@@ -737,6 +747,44 @@ class Drone:
                 return False
         return True
 
+    def is_motion_to_point_clear(self, point, margin=3):
+        start = (self.x_previous, self.y_previous)
+        distance_to_point = np.sqrt((start[0] - point[0]) ** 2 + (start[1] - point[1]) ** 2)
+        sight_line = [start[0], start[1], point[0], point[1]]
+        for wall in self.env.level_collision_vectors:
+            result = line_intersect_tolerant(*sight_line, *wall)
+            if result is None:
+                continue
+            distance_to_wall = np.sqrt((start[0] - result[0]) ** 2 + (start[1] - result[1]) ** 2)
+            if distance_to_wall < distance_to_point - margin:
+                return False
+        return True
+
+    def checkpoint_crossing_point(self, goal):
+        crossing = line_intersect_tolerant(*self.movement_vector, *goal)
+        if crossing is not None:
+            return crossing
+
+        x0, y0, x1, y1 = self.movement_vector
+        gx0, gy0, gx1, gy1 = goal
+        d0 = signed_distance_to_line(x0, y0, gx0, gy0, gx1, gy1)
+        d1 = signed_distance_to_line(x1, y1, gx0, gy0, gx1, gy1)
+        if d0 * d1 > 0:
+            return None
+        if abs(d0) < 1e-6 and abs(d1) < 1e-6:
+            return None
+
+        ratio = abs(d0) / max(abs(d0) + abs(d1), 1e-6)
+        px = x0 + ratio * (x1 - x0)
+        py = y0 + ratio * (y1 - y0)
+        fraction = point_line_segment_fraction(px, py, *goal)
+        if not (CHECKPOINT_CROSS_TRIM <= fraction <= 1 - CHECKPOINT_CROSS_TRIM):
+            return None
+        distance = point_to_line_segment_distance(px, py, *goal)
+        if distance > CHECKPOINT_CROSS_TOLERANCE:
+            return None
+        return closest_point_on_line_segment(px, py, *goal)
+
     def clear_checkpoint_memory(self):
         self.coverage_memory_features = np.array([0.0, 1.0, -1.0, -1.0], dtype=np.float32)
         self.coverage_memory_goal_index = None
@@ -935,7 +983,8 @@ class Drone:
             for i, goal in enumerate(self.env.goals):
                 if self.coverage_visited[i]:
                     continue
-                hit_goal = line_intersect(*self.movement_vector, *goal) is not None
+                crossing = self.checkpoint_crossing_point(goal)
+                hit_goal = crossing is not None and self.is_motion_to_point_clear(crossing)
                 if hit_goal:
                     self.coverage_visited[i] = True
                     self.coverage_count += 1
