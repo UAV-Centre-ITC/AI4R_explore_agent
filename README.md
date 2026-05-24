@@ -87,10 +87,10 @@ The default task uses `reward_mode="coverage"`. Each checkpoint gives reward onl
 ```text
 +0.5 for each new checkpoint
  0.0 for revisiting an already collected checkpoint
--0.2, -0.4, -0.6, ... for repeated wall contacts in the same episode
+wall-contact penalty starts at -0.2 and converges to -0.5 cumulatively between checkpoints
 ```
 
-The coverage task also adds small penalties when the robot hovers in an already visited coarse map cell or fails to approach a visible unvisited checkpoint. Wall contact blocks the robot and adds an escalating penalty, but it does not end the default rooms episode. This discourages standing still or repeatedly driving into walls, while the checkpoint count remains the main evaluation score.
+The coverage task also adds small penalties when the robot hovers in an already visited coarse map cell or fails to approach a visible unvisited checkpoint. Wall contact blocks the robot and adds a bounded escalating penalty, but it does not end the default rooms episode. The wall-contact penalty state resets after a new checkpoint is reached. This discourages standing still or repeatedly driving into walls, while the checkpoint count remains the main evaluation score.
 
 The episode ends when the robot collects all checkpoints or reaches the step limit. The default `rooms` map has 20 checkpoints. Each checkpoint is worth `0.5`, so the checkpoint reward maximum is `10.0`. The training return can be lower if the robot hits walls or spends time hovering without exploring. The default challenge uses `max_steps=400`, which corresponds to about 20 seconds in the visual rollout with the default sleep value.
 

@@ -73,7 +73,7 @@ def print_training_context(args, task_limits):
             f"{task_limits['checkpoint_reward']:.2f} reward = "
             f"{task_limits['max_reward']:.2f} max reward"
         )
-        print("  exploration shaping: penalties for hovering, escalating wall contact, and not approaching visible checkpoints")
+        print("  exploration shaping: penalties for hovering, bounded wall contact, and not approaching visible checkpoints")
 
     print("\nLog columns")
     print("  iter: completed PPO training iteration")
