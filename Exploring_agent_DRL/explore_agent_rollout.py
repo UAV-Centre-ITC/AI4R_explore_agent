@@ -27,8 +27,7 @@ def format_coverage(info):
     return (
         f"; checkpoints {info['visited_checkpoints']}/{info['total_checkpoints']} "
         f"({100 * info['coverage_ratio']:.1f}%); checkpoint max {info['max_reward']:.1f}; "
-        f"exploration bonus {info.get('exploration_bonus', 0.0):.2f}/"
-        f"{info.get('max_exploration_bonus', 0.0):.1f}"
+        f"hover penalty {info.get('hover_penalty', 0.0):.2f}"
     )
 
 

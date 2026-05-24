@@ -16,8 +16,8 @@ COLOR_TURN = (245, 170, 35)
 
 COVERAGE_GOAL_SLOTS = 3
 COVERAGE_CELL_SIZE = 80
-COVERAGE_CELL_REWARD = 0.005
-COVERAGE_CELL_REWARD_CAP = 1.0
+COVERAGE_HOVER_SPEED_THRESHOLD = 0.25
+COVERAGE_HOVER_PENALTY = 0.002
 
 
 
@@ -506,8 +506,8 @@ class Drone:
         self.coverage_explored_cells = {
             (int(self.x // COVERAGE_CELL_SIZE), int(self.y // COVERAGE_CELL_SIZE))
         }
-        self.coverage_cell_bonus_total = 0.0
-        self.coverage_last_cell_bonus = 0.0
+        self.coverage_hover_penalty_total = 0.0
+        self.coverage_last_hover_penalty = 0.0
         self.update_echo_vectors()
         self.update_goal_vectors()
         self.check_collision_echo()
@@ -553,27 +553,26 @@ class Drone:
     def update_reward_coverage(self):
         new_hits = self.coverage_count - self.coverage_count_previous
         self.reward_step = float(new_hits) * self.COVERAGE_REWARD
-        if self.coverage_last_cell_bonus > 0:
-            self.reward_step += self.coverage_last_cell_bonus
+        if new_hits == 0 and self.coverage_last_hover_penalty > 0:
+            self.reward_step -= self.coverage_last_hover_penalty
+            self.coverage_hover_penalty_total += self.coverage_last_hover_penalty
         if self.game.done_reason == "collision":
             self.reward_step -= 1.0
-        self.reward_total = float(self.coverage_count) * self.COVERAGE_REWARD + self.coverage_cell_bonus_total
+        self.reward_total = float(self.coverage_count) * self.COVERAGE_REWARD - self.coverage_hover_penalty_total
         self.coverage_count_previous = self.coverage_count
-        self.coverage_last_cell_bonus = 0.0
 
-    def update_coverage_exploration_bonus(self):
-        self.coverage_last_cell_bonus = 0.0
+    def update_coverage_exploration_state(self):
+        self.coverage_last_hover_penalty = 0.0
         if self.game.reward_mode != 'coverage':
             return
         cell = (int(self.x // COVERAGE_CELL_SIZE), int(self.y // COVERAGE_CELL_SIZE))
-        if cell in self.coverage_explored_cells:
+        if cell not in self.coverage_explored_cells:
+            self.coverage_explored_cells.add(cell)
             return
-        self.coverage_explored_cells.add(cell)
-        if self.coverage_cell_bonus_total >= COVERAGE_CELL_REWARD_CAP:
-            return
-        bonus = min(COVERAGE_CELL_REWARD, COVERAGE_CELL_REWARD_CAP - self.coverage_cell_bonus_total)
-        self.coverage_last_cell_bonus = bonus
-        self.coverage_cell_bonus_total += bonus
+
+        speed = np.sqrt(self.vel_x ** 2 + self.vel_y ** 2)
+        if speed < COVERAGE_HOVER_SPEED_THRESHOLD:
+            self.coverage_last_hover_penalty = COVERAGE_HOVER_PENALTY
 
     def get_nearest_unvisited_goal(self):
         unvisited = np.flatnonzero(~self.coverage_visited)
@@ -1062,7 +1061,7 @@ class ExploreDrone(gym.Env):
         # ─── PERFORM STEP ───────────────────-─────────────────────────────
         if not self.drone.done:
             self.drone.move(tmp_action)
-            self.drone.update_coverage_exploration_bonus()
+            self.drone.update_coverage_exploration_state()
             # print(f"[STEP 0] action={action}, pos=({self.drone.x:.2f},{self.drone.y:.2f}), vel=({self.drone.vel_x:.3f},{self.drone.vel_y:.3f}), reward={self.drone.reward_step:.4f}")
             self.drone.update_echo_vectors()
             if self.rule_collision:
@@ -1111,8 +1110,8 @@ class ExploreDrone(gym.Env):
                 "coverage_ratio": float(self.drone.coverage_count / max(1, self.env.n_goals)),
                 "checkpoint_reward": float(self.drone.COVERAGE_REWARD),
                 "max_reward": float(self.env.n_goals * self.drone.COVERAGE_REWARD),
-                "exploration_bonus": float(self.drone.coverage_cell_bonus_total),
-                "max_exploration_bonus": float(COVERAGE_CELL_REWARD_CAP),
+                "hover_penalty": float(self.drone.coverage_hover_penalty_total),
+                "last_hover_penalty": float(self.drone.coverage_last_hover_penalty),
             })
 
         # ─── RESET ITERATION VARIABLES ───────────────────────────────────

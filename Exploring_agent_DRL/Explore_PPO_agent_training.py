@@ -65,14 +65,14 @@ def print_training_context(args, task_limits):
             f"{task_limits['checkpoint_reward']:.2f} reward = "
             f"{task_limits['max_reward']:.2f} max reward"
         )
-        print("  exploration shaping: small capped reward for entering new map cells")
+        print("  exploration shaping: small penalty for hovering in already visited map cells")
 
     print("\nLog columns")
     print("  iter: completed PPO training iteration")
     print("  reward min/mean/max: episode return statistics from the latest training batch")
     if task_limits["max_reward"] is not None:
         print("  score%: mean reward as a percentage of the checkpoint reward maximum")
-        print("          shaping bonuses can make this slightly exceed 100%")
+        print("          idle penalties can reduce returns below the checkpoint score")
         print("          early scores can be negative because collision has a penalty")
     print("  len: mean episode length in environment steps")
     print("  best: best mean reward saved after warmup iterations\n")

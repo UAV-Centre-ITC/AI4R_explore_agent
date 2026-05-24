@@ -90,9 +90,9 @@ The default task uses `reward_mode="coverage"`. Each checkpoint gives reward onl
 -1.0 for collision
 ```
 
-The coverage task also adds a small capped shaping reward for entering new coarse map cells. This helps the robot keep exploring when no new checkpoint is immediately visible, while the checkpoint count remains the main evaluation score.
+The coverage task also adds a small penalty when the robot hovers in an already visited coarse map cell. This discourages standing still when no checkpoint is immediately visible, while the checkpoint count remains the main evaluation score.
 
-The episode ends when the robot collides, collects all checkpoints, or reaches the step limit. The default `rooms` map has 20 checkpoints. Each checkpoint is worth `0.5`, so the checkpoint reward maximum is `10.0`. The training return can be slightly higher because of the capped exploration shaping bonus. The default challenge uses `max_steps=400`, which corresponds to about 20 seconds in the visual rollout with the default sleep value.
+The episode ends when the robot collides, collects all checkpoints, or reaches the step limit. The default `rooms` map has 20 checkpoints. Each checkpoint is worth `0.5`, so the checkpoint reward maximum is `10.0`. The training return can be lower if the robot collides or spends time hovering without exploring. The default challenge uses `max_steps=400`, which corresponds to about 20 seconds in the visual rollout with the default sleep value.
 
 ## Student Task
 
@@ -265,7 +265,7 @@ Terminal-only rollout check:
 python explore_agent_rollout.py --checkpoint tmp/ppo_rooms/checkpoint_best --env-name rooms --reward-mode coverage --max-steps 400 --steps 400 --sleep 0 --no-gui
 ```
 
-The rollout prints the cumulative reward, checkpoint coverage, checkpoint reward maximum, and exploration bonus.
+The rollout prints the cumulative reward, checkpoint coverage, checkpoint reward maximum, and accumulated hover penalty.
 In the Pygame view, walls are black, unvisited checkpoints are red, and visited checkpoints turn green. Yellow rays show the robot's distance sensors. Green/blue motion marks show acceleration or braking, and orange arcs show turn commands.
 
 ## Optional Baseline Task
