@@ -24,7 +24,7 @@ COVERAGE_GOAL_SLOTS = 5
 COVERAGE_CELL_SIZE = int(80 * ROOMS_SCALE)
 COVERAGE_HOVER_SPEED_THRESHOLD = 0.25
 COVERAGE_HOVER_PENALTY = 0.002
-COVERAGE_COLLISION_PENALTY = 0.02
+COVERAGE_COLLISION_PENALTY_STEP = 0.2
 COVERAGE_PROGRESS_PENALTY = 0.001
 COVERAGE_PROGRESS_MARGIN = 0.5
 CHECKPOINT_HIT_RADIUS = 25
@@ -511,6 +511,8 @@ class Drone:
         self.last_accel_cmd = 0.0
         self.last_turn_cmd = 0.0
         self.collision_step = False
+        self.coverage_collision_count = 0
+        self.coverage_last_collision_penalty = 0.0
         self.goal_vector_last = None
         self.coverage_visited = np.zeros(self.env.n_goals, dtype=bool)
         self.coverage_count = 0
@@ -580,8 +582,8 @@ class Drone:
             self.reward_step -= self.coverage_last_progress_penalty
             self.coverage_progress_penalty_total += self.coverage_last_progress_penalty
         if self.collision_step:
-            self.reward_step -= COVERAGE_COLLISION_PENALTY
-            self.coverage_collision_penalty_total += COVERAGE_COLLISION_PENALTY
+            self.reward_step -= self.coverage_last_collision_penalty
+            self.coverage_collision_penalty_total += self.coverage_last_collision_penalty
         self.reward_total = (
             float(self.coverage_count) * self.COVERAGE_REWARD
             - self.coverage_hover_penalty_total
@@ -851,11 +853,16 @@ class Drone:
 
     def check_collision_env(self):
         self.collision_step = False
+        self.coverage_last_collision_penalty = 0.0
         for line in self.env.level_collision_vectors:
             result = line_intersect(*self.movement_vector, *line)
             if result is not None:
                 if self.game.reward_mode == 'coverage' and not self.game.coverage_collision_ends_episode:
                     self.collision_step = True
+                    self.coverage_collision_count += 1
+                    self.coverage_last_collision_penalty = (
+                        COVERAGE_COLLISION_PENALTY_STEP * self.coverage_collision_count
+                    )
                     self.x, self.y = self.x_previous, self.y_previous
                     self.vel_x, self.vel_y = 0.0, 0.0
                     self.movement_vector = [self.x, self.y, self.x, self.y]
@@ -1170,7 +1177,9 @@ class ExploreDrone(gym.Env):
                 "hover_penalty": float(self.drone.coverage_hover_penalty_total),
                 "last_hover_penalty": float(self.drone.coverage_last_hover_penalty),
                 "collision": bool(self.drone.collision_step),
-                "collision_penalty": float(COVERAGE_COLLISION_PENALTY),
+                "collision_count": int(self.drone.coverage_collision_count),
+                "collision_penalty_step": float(COVERAGE_COLLISION_PENALTY_STEP),
+                "last_collision_penalty": float(self.drone.coverage_last_collision_penalty),
                 "collision_penalty_total": float(self.drone.coverage_collision_penalty_total),
                 "progress_penalty": float(self.drone.coverage_progress_penalty_total),
                 "last_progress_penalty": float(self.drone.coverage_last_progress_penalty),
