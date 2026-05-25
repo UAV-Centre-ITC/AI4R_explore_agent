@@ -23,7 +23,7 @@ def parse_args():
     parser.add_argument("--iterations", type=int, default=1000)
     parser.add_argument("--save-interval", type=int, default=25)
     parser.add_argument("--warmup-iterations", type=int, default=50)
-    parser.add_argument("--num-workers", type=int, default=0)
+    parser.add_argument("--num-workers", type=int, default=4)
     parser.add_argument("--num-gpus", type=float, default=0)
     parser.add_argument("--env-name", default="2d_checkpoint_exploration")
     parser.add_argument("--reward-mode", default="coverage")

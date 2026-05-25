@@ -266,19 +266,27 @@ entropy_coeff = 0.1
 ```
 
 ```bash
-python run_assignment.py train --iterations 500 --train-batch-size 2000 --sgd-minibatch-size 256 --num-sgd-iter 10 --num-workers 0 --num-gpus 0 --entropy-coeff 0.1 --checkpoint-dir tmp/ppo_entropy_010
+python run_assignment.py train --iterations 500 --train-batch-size 2000 --sgd-minibatch-size 256 --num-sgd-iter 10 --num-workers 4 --num-gpus 0 --entropy-coeff 0.1 --checkpoint-dir tmp/ppo_entropy_010
 ```
 
 GPU version, if CUDA is available:
 
 ```bash
-python run_assignment.py train --iterations 500 --train-batch-size 2000 --sgd-minibatch-size 256 --num-sgd-iter 10 --num-workers 0 --num-gpus 1 --entropy-coeff 0.1 --checkpoint-dir tmp/ppo_entropy_010
+python run_assignment.py train --iterations 500 --train-batch-size 2000 --sgd-minibatch-size 256 --num-sgd-iter 10 --num-workers 4 --num-gpus 1 --entropy-coeff 0.1 --checkpoint-dir tmp/ppo_entropy_010
 ```
+
+Training is much faster with parallel rollout workers. Check the number of available CPU processors:
+
+```bash
+python -c "import os; print(os.cpu_count())"
+```
+
+Use at least `4` workers when possible. On a stronger machine, start with at least half of the available processors, leaving the rest for the learner, operating system, and other applications.
 
 You can also call the training script directly:
 
 ```bash
-python Explore_PPO_agent_training.py --iterations 500 --num-workers 0 --num-gpus 0 --env-name 2d_checkpoint_exploration --reward-mode coverage --max-steps 400 --entropy-coeff 0.1 --train-batch-size 2000 --checkpoint-dir tmp/ppo_entropy_010
+python Explore_PPO_agent_training.py --iterations 500 --num-workers 4 --num-gpus 0 --env-name 2d_checkpoint_exploration --reward-mode coverage --max-steps 400 --entropy-coeff 0.1 --train-batch-size 2000 --checkpoint-dir tmp/ppo_entropy_010
 ```
 
 ### Training Length per PPO Iteration
@@ -292,7 +300,7 @@ python Explore_PPO_agent_training.py --iterations 500 --num-workers 0 --num-gpus
 Students may change this value if they want longer or shorter PPO updates:
 
 ```bash
-python run_assignment.py train --iterations 500 --train-batch-size 4000 --num-workers 0 --num-gpus 0 --entropy-coeff 0.1 --checkpoint-dir tmp/ppo_entropy_010_batch4000
+python run_assignment.py train --iterations 500 --train-batch-size 4000 --num-workers 4 --num-gpus 0 --entropy-coeff 0.1 --checkpoint-dir tmp/ppo_entropy_010_batch4000
 ```
 
 A larger batch gives PPO a more stable update but each iteration takes longer. A smaller batch gives faster iteration feedback but usually noisier learning.
@@ -309,7 +317,7 @@ Students may adjust the training values to reach the task goal, as long as they 
 - `--max-steps`: maximum training episode length. The assignment uses `400` during training and allows up to `1000` during final rollout.
 - `--spawn-mode`: start-pose selection. Training uses `random` by default, sampling from fixed safe start poses. Rollout uses `fixed` by default for repeatable videos.
 - `--spawn-index`: fixed start-pose index used when `--spawn-mode fixed`.
-- `--num-workers`: number of Ray rollout workers. Keep `0` for simple local training unless the machine has enough CPU cores.
+- `--num-workers`: number of Ray rollout workers. Use at least `4` when possible. For faster training, check the available processor count and start with at least half of that number.
 - `--num-gpus`: use `1` only when CUDA is available; otherwise use `0`.
 
 ### Optional RL Algorithms
@@ -329,7 +337,7 @@ For the required exploration comparison, use the closest parameter for the selec
 Optional DDPG run:
 
 ```bash
-python run_assignment.py train-ddpg --iterations 1000 --num-workers 0 --num-gpus 0 --checkpoint-dir tmp/ddpg_2d_checkpoint_exploration
+python run_assignment.py train-ddpg --iterations 1000 --num-workers 4 --num-gpus 0 --checkpoint-dir tmp/ddpg_2d_checkpoint_exploration
 ```
 
 DDPG checkpoints can be tested with the same rollout command by changing the checkpoint path:
@@ -343,7 +351,7 @@ python run_assignment.py rollout --checkpoint tmp/ddpg_2d_checkpoint_exploration
 To continue from an existing checkpoint, pass `--resume-from` and write new checkpoints to a new folder:
 
 ```bash
-python run_assignment.py train --iterations 300 --resume-from tmp/ppo_entropy_010/checkpoint_best --checkpoint-dir tmp/ppo_entropy_010_resume --num-workers 0 --num-gpus 0 --entropy-coeff 0.1 --train-batch-size 2000
+python run_assignment.py train --iterations 300 --resume-from tmp/ppo_entropy_010/checkpoint_best --checkpoint-dir tmp/ppo_entropy_010_resume --num-workers 4 --num-gpus 0 --entropy-coeff 0.1 --train-batch-size 2000
 ```
 
 Use the same fixed map when resuming. If the map, observation format, or reward mode is changed, old checkpoints may not be compatible or may behave differently from the submitted setup.
@@ -389,7 +397,7 @@ For the best setup and the no-entropy comparison run, discuss:
 For PPO, run this comparison case against the best setup:
 
 ```bash
-python run_assignment.py train --iterations 500 --train-batch-size 2000 --sgd-minibatch-size 256 --num-sgd-iter 10 --num-workers 0 --num-gpus 0 --entropy-coeff 0.0 --checkpoint-dir tmp/ppo_entropy_000
+python run_assignment.py train --iterations 500 --train-batch-size 2000 --sgd-minibatch-size 256 --num-sgd-iter 10 --num-workers 4 --num-gpus 0 --entropy-coeff 0.0 --checkpoint-dir tmp/ppo_entropy_000
 ```
 
 Test the best checkpoint and the `entropy_coeff=0.0` checkpoint, then report what changed in the reward curve and rollout behavior. If a different RL algorithm is used, run the same kind of comparison with its closest low/no-exploration parameter and explain which parameter was changed.

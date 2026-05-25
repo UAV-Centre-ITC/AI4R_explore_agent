@@ -28,7 +28,7 @@ def parse_args():
     parser.add_argument("--iterations", type=int, default=500)
     parser.add_argument("--save-interval", type=int, default=10)
     parser.add_argument("--warmup-iterations", type=int, default=50)
-    parser.add_argument("--num-workers", type=int, default=0)
+    parser.add_argument("--num-workers", type=int, default=4)
     parser.add_argument("--num-gpus", type=float, default=0)
     parser.add_argument(
         "--env-name",
