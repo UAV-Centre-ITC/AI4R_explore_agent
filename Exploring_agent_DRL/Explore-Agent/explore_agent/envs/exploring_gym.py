@@ -559,6 +559,9 @@ class Drone:
         self.coverage_goal_features = np.zeros(COVERAGE_GOAL_SLOTS * 3, dtype=np.float32)
         self.coverage_progress_interp = -1.0
         self.coverage_stall_interp = -1.0
+        self.coverage_target_point = np.array([self.x, self.y], dtype=float)
+        self.coverage_target_visible = False
+        self.coverage_target_distance = 0.0
         self.coverage_explored_cells = {
             (int(self.x // COVERAGE_CELL_SIZE), int(self.y // COVERAGE_CELL_SIZE))
         }
@@ -697,7 +700,17 @@ class Drone:
     def update_goal_vectors(self):
         if self.game.reward_mode == 'coverage':
             candidates = self.get_unvisited_goal_candidates()
-            self.level = candidates[0][2] if candidates else 0
+            if candidates:
+                _, distance, target_index, _, visible, px, py = candidates[0]
+                self.level = target_index
+                self.coverage_target_point = np.array([px, py], dtype=float)
+                self.coverage_target_visible = bool(visible)
+                self.coverage_target_distance = float(distance)
+            else:
+                self.level = 0
+                self.coverage_target_point = np.array([self.x, self.y], dtype=float)
+                self.coverage_target_visible = False
+                self.coverage_target_distance = 0.0
             self.goal_vector_next = self.env.get_goal_line(self.level)
             self.goal_vector_last = self.goal_vector_next
             return
@@ -765,8 +778,10 @@ class Drone:
 
     def update_coverage_goal_features(self):
         features = np.zeros(COVERAGE_GOAL_SLOTS * 3, dtype=np.float32)
-        candidates = self.get_unvisited_goal_candidates()
-        for slot, (_, distance, _, goal_ang_diff, visible, _, _) in enumerate(candidates[:COVERAGE_GOAL_SLOTS]):
+        features[1::3] = 1.0
+        features[2::3] = -1.0
+        candidates = self.get_unvisited_goal_candidates()[:1]
+        for slot, (_, distance, _, goal_ang_diff, visible, _, _) in enumerate(candidates):
             base = slot * 3
             features[base] = np.interp(goal_ang_diff, [-np.pi, np.pi], [-1, 1])
             features[base + 1] = np.interp(
@@ -866,17 +881,21 @@ class Drone:
             yi = a * xi + b
             return xi, yi
 
-        # from drone to next goal line direction
-        goal_next = self.goal_vector_next
-        goal_last = self.goal_vector_last
-
         xp, yp = self.x, self.y
 
-        x1, y1, x2, y2 = goal_last
-        self.xi0, self.yi0 = get_intersection_point(xp, yp, x1, y1, x2, y2)
+        if self.game.reward_mode == 'coverage':
+            self.xi0, self.yi0 = self.coverage_target_point
+            self.xi1, self.yi1 = self.coverage_target_point
+        else:
+            # from drone to next goal line direction
+            goal_next = self.goal_vector_next
+            goal_last = self.goal_vector_last
 
-        x1, y1, x2, y2 = goal_next
-        self.xi1, self.yi1 = get_intersection_point(xp, yp, x1, y1, x2, y2)
+            x1, y1, x2, y2 = goal_last
+            self.xi0, self.yi0 = get_intersection_point(xp, yp, x1, y1, x2, y2)
+
+            x1, y1, x2, y2 = goal_next
+            self.xi1, self.yi1 = get_intersection_point(xp, yp, x1, y1, x2, y2)
 
         dx, dy = self.xi1 - self.x, self.yi1 - self.y
         goal_ang = np.arctan2(-dy, dx)

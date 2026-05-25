@@ -125,7 +125,7 @@ It includes:
 - Robot speed.
 - Angle between heading and velocity.
 - Angle to the currently selected checkpoint target.
-- `5` unvisited checkpoint slots.
+- Checkpoint target slots. The current assignment activates the closest visible unvisited checkpoint as the primary target.
 - Overall checkpoint progress.
 - Stall time since the last new checkpoint.
 
@@ -142,15 +142,15 @@ The first `10` values describe the robot's local motion and target direction:
 - `alpha`: normalized angle between the robot heading and its current velocity direction.
 - `beta`: normalized angle between the robot heading and the selected checkpoint target direction.
 
-The remaining observation values describe several visible unvisited checkpoint candidates, so the policy can choose between multiple exploration directions instead of only reacting to one target.
+The remaining observation values reserve space for checkpoint target features. In this assignment, the first slot is used for the closest visible unvisited checkpoint. This keeps the guidance simple when more than one checkpoint is visible.
 
-Each checkpoint slot contains:
+The active checkpoint slot contains:
 
 ```text
 [relative angle, distance, visible flag]
 ```
 
-The visible flag is only positive when the checkpoint can be seen without a wall blocking line of sight. If the robot overlaps or is too close to a wall, rays are blocked and checkpoints behind the wall are not visible.
+The visible flag is only positive when the checkpoint can be seen without a wall blocking line of sight. If the robot overlaps or is too close to a wall, rays are blocked and checkpoints behind the wall are not visible. Unused slots are marked as not visible.
 
 ## Reward Function
 
