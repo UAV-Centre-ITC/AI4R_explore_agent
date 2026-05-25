@@ -17,6 +17,8 @@ from explore_agent.envs.reward_config import (
 from ray.rllib.algorithms.ppo.ppo import PPOConfig
 from ray._private import resource_spec
 
+ASSIGNMENT_TARGET_REWARD = 6.0
+
 
 # Avoid Ray probing nvidia-smi during CPU-only training.
 def _autodetect_num_gpus():
@@ -147,7 +149,8 @@ def print_training_context(args, task_limits):
     print("  reward min/mean/max: episode return statistics from the latest training batch")
     print("  train batch: environment steps collected before one PPO update")
     if task_limits["max_reward"] is not None:
-        print("  score%: mean reward as a percentage of the checkpoint reward maximum")
+        print("  target>=6: whether the latest batch contains an episode above the submission threshold")
+        print("  max%: best episode reward in the latest batch as a percentage of the checkpoint reward maximum")
         print("          idle penalties can reduce returns below the checkpoint score")
         print("          early scores can be negative because collision has a penalty")
     print("  len: mean episode length in environment steps")
@@ -163,11 +166,13 @@ def format_training_status(iteration, result, best_reward, max_reward):
     best = best_reward if best_reward != float("-inf") else 0.0
 
     if max_reward is not None and max_reward > 0:
-        score_percent = 100.0 * mean_reward / max_reward
+        max_percent = 100.0 * max_seen_reward / max_reward
+        target_reached = "yes" if max_seen_reward >= ASSIGNMENT_TARGET_REWARD else "no"
         return (
             f"iter {iteration:4d} | "
             f"reward {min_reward:7.2f}/{mean_reward:7.2f}/{max_seen_reward:7.2f} | "
-            f"score {score_percent:6.1f}% | "
+            f"target>=6 {target_reached:>3s} | "
+            f"max {max_percent:6.1f}% | "
             f"len {mean_len:6.1f} | "
             f"best {best:7.2f}"
         )

@@ -284,6 +284,8 @@ python -c "import os; print(os.cpu_count())"
 
 Use at least `4` workers when possible. On a stronger machine, start with at least half of the available processors, leaving the rest for the learner, operating system, and other applications.
 
+During training, the log column `target>=6` shows whether the latest training batch contains an episode above the submission threshold. The `max%` column shows that batch's best episode reward as a percentage of the `10.0` maximum checkpoint reward.
+
 You can also call the training script directly:
 
 ```bash

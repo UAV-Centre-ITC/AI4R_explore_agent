@@ -13,6 +13,8 @@ from ray.tune.registry import register_env
 from explore_agent.envs.exploring_gym import ExploreDrone
 from explore_agent.envs.reward_config import CHECKPOINT_REWARD
 
+ASSIGNMENT_TARGET_REWARD = 6.0
+
 
 def _autodetect_num_gpus():
     return 0
@@ -122,7 +124,8 @@ def print_training_context(args, task_limits):
     print("\nLog columns")
     print("  iter: completed DDPG training iteration")
     print("  reward min/mean/max: episode return statistics from the latest training result")
-    print("  score%: mean reward as a percentage of the checkpoint reward maximum")
+    print("  target>=6: whether the latest batch contains an episode above the submission threshold")
+    print("  max%: best episode reward in the latest batch as a percentage of the checkpoint reward maximum")
     print("  len: mean episode length in environment steps")
     print("  best: best mean reward saved after warmup iterations\n")
     sys.stdout.flush()
@@ -134,11 +137,13 @@ def format_training_status(iteration, result, best_reward, max_reward):
     max_seen_reward = result["episode_reward_max"]
     mean_len = result["episode_len_mean"]
     best = best_reward if best_reward != float("-inf") else 0.0
-    score_percent = 100.0 * mean_reward / max_reward if max_reward > 0 else 0.0
+    max_percent = 100.0 * max_seen_reward / max_reward if max_reward > 0 else 0.0
+    target_reached = "yes" if max_seen_reward >= ASSIGNMENT_TARGET_REWARD else "no"
     return (
         f"iter {iteration:4d} | "
         f"reward {min_reward:7.2f}/{mean_reward:7.2f}/{max_seen_reward:7.2f} | "
-        f"score {score_percent:6.1f}% | "
+        f"target>=6 {target_reached:>3s} | "
+        f"max {max_percent:6.1f}% | "
         f"len {mean_len:6.1f} | "
         f"best {best:7.2f}"
     )
