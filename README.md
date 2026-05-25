@@ -187,7 +187,7 @@ Checkpoint collection uses a swept crossing test. The robot must move across the
 
 ## Environment Setup
 
-The codebase was developed and tested on Ubuntu/Linux. The commands below use an Ubuntu/Linux shell. Windows and macOS should also work through Conda in theory, but they were not tested end to end for this release.
+The codebase was developed and tested on **Ubuntu/Linux**. The commands below use an **Ubuntu/Linux shell**. **Windows** and **macOS** should also work through **Conda** in theory, but they were not tested end to end for this release.
 
 Platform setup references:
 
@@ -195,13 +195,13 @@ Platform setup references:
 - Windows Conda install guide: <https://docs.conda.io/projects/conda/en/latest/user-guide/install/windows.html>
 - macOS Conda install guide: <https://docs.conda.io/projects/conda/en/latest/user-guide/install/macos.html>
 
-The command blocks below were tested end to end on Ubuntu/Linux. On Windows, use the short setup note in [windows_setup.md](Exploring_agent_DRL/docs/windows_setup.md). On macOS, use Terminal and follow the same `git clone`, `cd`, Conda, and Python commands after installing Conda; skip Linux package-manager commands such as `sudo apt`. Shell-specific commands such as `source <path-to-miniconda>/etc/profile.d/conda.sh` apply to Linux/macOS terminals only.
+The command blocks below were tested end to end on **Ubuntu/Linux**. On **Windows**, use the short setup note in [windows_setup.md](Exploring_agent_DRL/docs/windows_setup.md). On **macOS**, use **Terminal** and follow the same `git clone`, `cd`, **Conda**, and **Python** commands after installing Conda; skip Linux package-manager commands such as `sudo apt`. Shell-specific commands such as `source <path-to-miniconda>/etc/profile.d/conda.sh` apply to Linux/macOS terminals only.
 
-The assumption for every platform is that students can install Conda or Miniconda, create the environment, activate it, enter the `Exploring_agent_DRL` folder, and then run the Python commands from this repository.
+The assumption for every platform is that students can install **Conda** or **Miniconda**, create the environment, activate it, enter the `Exploring_agent_DRL` folder, and then run the **Python** commands from this repository.
 
-This assignment does not require heavy GPU compute. A good CPU is enough for training, although an NVIDIA GPU can be used if CUDA is installed correctly. Use the CPU environment unless `nvidia-smi` works and PyTorch reports CUDA as available.
+This assignment does not require heavy **GPU** compute. A good **CPU** is enough for training, although an **NVIDIA GPU** can be used if **CUDA** is installed correctly. Use the **CPU environment** unless `nvidia-smi` works and PyTorch reports CUDA as available.
 
-On Ubuntu/Linux, install Git if needed, then clone the assignment:
+On **Ubuntu/Linux**, install **Git** if needed, then **clone** the assignment:
 
 ```bash
 sudo apt update
@@ -211,14 +211,14 @@ cd AI4R_explore_agent
 cd Exploring_agent_DRL
 ```
 
-CPU environment:
+**CPU environment:**
 
 ```bash
 conda env create -f environment.yml
 conda activate aiar-rl-explore
 ```
 
-NVIDIA GPU environment:
+**NVIDIA GPU environment:**
 
 ```bash
 conda env create -f environment-gpu.yml
