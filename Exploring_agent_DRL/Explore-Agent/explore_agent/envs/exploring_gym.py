@@ -1405,19 +1405,16 @@ class ExploreDrone(gym.Env):
                 pygame.font.init()
             self.pygame_initialized = True
 
+            asset_dir = os.path.join(os.path.dirname(__file__), 'imgs')
+
             def load_robot_image(filename):
-                image = pygame.transform.scale2x(pygame.image.load(os.path.join('imgs', filename)))
+                image = pygame.transform.scale2x(pygame.image.load(os.path.join(asset_dir, filename)))
                 width, height = image.get_size()
                 return pygame.transform.smoothscale(
                     image,
                     (int(width * ROBOT_RENDER_SCALE), int(height * ROBOT_RENDER_SCALE)),
                 )
 
-            # self.drone_IMG = [pygame.transform.scale2x(pygame.image.load(os.path.join('imgs', 'drone_no_power.png'))),
-            #                   pygame.transform.scale2x(pygame.image.load(os.path.join(
-            #                       'imgs', 'drone_power.png'))), pygame.transform.scale2x(pygame.image.load(os.path.join(
-            #         'imgs', 'drone_power_front.png'))), pygame.transform.scale2x(pygame.image.load(os.path.join(
-            #         'imgs', 'drone_black.png')))]
             self.drone_IMG = [
                 load_robot_image('tank_no_power.png'),
                 load_robot_image('tank_power.png'),
@@ -1425,7 +1422,7 @@ class ExploreDrone(gym.Env):
                 load_robot_image('tank_black.png'),
             ]
             self.BG_IMG = pygame.transform.scale(
-                pygame.image.load(os.path.join('imgs', 'white_bg.jpg')),
+                pygame.image.load(os.path.join(asset_dir, 'white_bg.jpg')),
                 (WINDOW_WIDTH, WINDOW_HEIGHT),
             )
             self.clock = pygame.time.Clock() if render_mode == 'human' else None
