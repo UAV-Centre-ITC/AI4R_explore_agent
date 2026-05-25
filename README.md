@@ -83,6 +83,7 @@ Exploring_agent_DRL/
 ├── performance_sanity_check.py               # headless stepping/render sanity check
 ├── docs/
 │   ├── AI4R_explore_agent_assignment.pdf
+│   ├── windows_setup.md
 │   ├── rooms_task_overview.png
 │   └── original_observation_space.png
 ├── Explore-Agent/explore_agent/envs/
@@ -194,15 +195,19 @@ Platform setup references:
 - Windows Conda install guide: <https://docs.conda.io/projects/conda/en/latest/user-guide/install/windows.html>
 - macOS Conda install guide: <https://docs.conda.io/projects/conda/en/latest/user-guide/install/macos.html>
 
-The command blocks below were tested end to end on Ubuntu/Linux. On Windows, run the same `conda` and `python` commands from Anaconda Prompt or a Conda-enabled PowerShell. On macOS, run them from Terminal after installing Conda. Shell-specific commands such as `source <path-to-miniconda>/etc/profile.d/conda.sh` apply to Linux/macOS terminals only.
+The command blocks below were tested end to end on Ubuntu/Linux. On Windows, use the short setup note in [windows_setup.md](Exploring_agent_DRL/docs/windows_setup.md). On macOS, use Terminal and follow the same `git clone`, `cd`, Conda, and Python commands after installing Conda; skip Linux package-manager commands such as `sudo apt`. Shell-specific commands such as `source <path-to-miniconda>/etc/profile.d/conda.sh` apply to Linux/macOS terminals only.
 
 The assumption for every platform is that students can install Conda or Miniconda, create the environment, activate it, enter the `Exploring_agent_DRL` folder, and then run the Python commands from this repository.
 
 This assignment does not require heavy GPU compute. A good CPU is enough for training, although an NVIDIA GPU can be used if CUDA is installed correctly. Use the CPU environment unless `nvidia-smi` works and PyTorch reports CUDA as available.
 
-From the repository root:
+On Ubuntu/Linux, install Git if needed, then clone the assignment:
 
 ```bash
+sudo apt update
+sudo apt install git
+git clone https://github.com/UAV-Centre-ITC/AI4R_explore_agent.git
+cd AI4R_explore_agent
 cd Exploring_agent_DRL
 ```
 
