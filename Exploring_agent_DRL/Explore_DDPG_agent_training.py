@@ -39,6 +39,8 @@ def parse_args():
         help="Optional .npz layout exported by the local layout editor.",
     )
     parser.add_argument("--train-batch-size", type=int, default=256)
+    parser.add_argument("--spawn-mode", choices=["fixed", "random"], default="random")
+    parser.add_argument("--spawn-index", type=int, default=0)
     parser.add_argument("--actor-lr", type=float, default=1e-3)
     parser.add_argument("--critic-lr", type=float, default=1e-3)
     parser.add_argument("--gamma", type=float, default=0.99)
@@ -74,6 +76,8 @@ def make_env_config(args):
         "gui": False,
         "render_mode": None,
         "rooms_layout_path": args.rooms_layout_path,
+        "spawn_mode": args.spawn_mode,
+        "spawn_index": args.spawn_index,
     }
 
 
@@ -99,6 +103,7 @@ def print_training_context(args, task_limits):
     print(f"  requested GPUs: {args.num_gpus}")
     print(f"  observation shape: {task_limits['observation_shape']}")
     print(f"  checkpoint layout: {task_limits['checkpoint_layout_source']}")
+    print(f"  spawn mode: {args.spawn_mode}")
     print(
         "  DDPG update: "
         f"train batch {args.train_batch_size}, actor lr {args.actor_lr:g}, "

@@ -48,6 +48,8 @@ def parse_args():
     )
     parser.add_argument("--reward-mode", default="coverage", choices=["dynamic", "continuous", "static", "coverage"])
     parser.add_argument("--max-steps", type=int, default=1000)
+    parser.add_argument("--spawn-mode", choices=["fixed", "random"], default="fixed")
+    parser.add_argument("--spawn-index", type=int, default=0)
     parser.add_argument("--ray-temp-dir", default=str(Path(tempfile.gettempdir()) / "aiar_ray"))
     parser.add_argument(
         "--layout-path",
@@ -91,6 +93,8 @@ def make_env_config(args, gui):
         "render_every": args.render_every,
         "render_fps": args.render_fps,
         "rooms_layout_path": args.rooms_layout_path,
+        "spawn_mode": args.spawn_mode,
+        "spawn_index": args.spawn_index,
     }
 
 
@@ -113,6 +117,7 @@ def main():
     agent = Algorithm.from_checkpoint(str(checkpoint))
     env = ExploreDrone(make_env_config(args, gui=not args.no_gui))
     print(f"Checkpoint layout: {env.env.rooms_layout_source_path or 'built-in'}")
+    print(f"Spawn mode: {args.spawn_mode}")
     state, _ = env.reset()
 
     total_reward = 0.0

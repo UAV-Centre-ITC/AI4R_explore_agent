@@ -24,6 +24,8 @@ def parse_args():
     train.add_argument("--checkpoint-dir", default="tmp/ppo_2d_checkpoint_exploration")
     train.add_argument("--resume-from", default="")
     train.add_argument("--layout-path", "--rooms-layout-path", dest="rooms_layout_path", default="")
+    train.add_argument("--spawn-mode", choices=["fixed", "random"], default="random")
+    train.add_argument("--spawn-index", type=int, default=0)
     train.add_argument("--train-batch-size", type=int, default=2000)
     train.add_argument("--sgd-minibatch-size", type=int, default=256)
     train.add_argument("--num-sgd-iter", type=int, default=10)
@@ -36,6 +38,8 @@ def parse_args():
     train_ddpg.add_argument("--checkpoint-dir", default="tmp/ddpg_2d_checkpoint_exploration")
     train_ddpg.add_argument("--resume-from", default="")
     train_ddpg.add_argument("--layout-path", "--rooms-layout-path", dest="rooms_layout_path", default="")
+    train_ddpg.add_argument("--spawn-mode", choices=["fixed", "random"], default="random")
+    train_ddpg.add_argument("--spawn-index", type=int, default=0)
     train_ddpg.add_argument("--train-batch-size", type=int, default=256)
     train_ddpg.add_argument("--actor-lr", type=float, default=1e-3)
     train_ddpg.add_argument("--critic-lr", type=float, default=1e-3)
@@ -50,6 +54,8 @@ def parse_args():
     rollout.add_argument("--render-fps", type=int, default=30)
     rollout.add_argument("--no-gui", action="store_true")
     rollout.add_argument("--layout-path", "--rooms-layout-path", dest="rooms_layout_path", default="")
+    rollout.add_argument("--spawn-mode", choices=["fixed", "random"], default="fixed")
+    rollout.add_argument("--spawn-index", type=int, default=0)
 
     return parser.parse_args()
 
@@ -84,6 +90,10 @@ def main():
             str(args.entropy_coeff),
             "--checkpoint-dir",
             args.checkpoint_dir,
+            "--spawn-mode",
+            args.spawn_mode,
+            "--spawn-index",
+            str(args.spawn_index),
             "--train-batch-size",
             str(args.train_batch_size),
             "--sgd-minibatch-size",
@@ -114,6 +124,10 @@ def main():
             str(args.max_steps),
             "--checkpoint-dir",
             args.checkpoint_dir,
+            "--spawn-mode",
+            args.spawn_mode,
+            "--spawn-index",
+            str(args.spawn_index),
             "--train-batch-size",
             str(args.train_batch_size),
             "--actor-lr",
@@ -148,6 +162,10 @@ def main():
             str(args.steps),
             "--render-fps",
             str(args.render_fps),
+            "--spawn-mode",
+            args.spawn_mode,
+            "--spawn-index",
+            str(args.spawn_index),
         ]
         command.append("--no-gui" if args.no_gui else "--gui")
         if args.no_gui:

@@ -57,6 +57,13 @@ GOAL_DISTANCE_NORM = 700 * ROOMS_SCALE
 RENDER_RAY_LENGTH = 360 * ROOMS_SCALE
 VELOCITY_NORM = 50 * ROOMS_SCALE
 ROBOT_RENDER_SCALE = 0.75
+ROOMS_SPAWN_POSES = np.array([
+    [165, 520, 0.0],
+    [360, 340, 0.0],
+    [760, 520, 0.0],
+    [1220, 500, np.pi],
+    [470, 760, -np.pi / 2],
+], dtype=float)
 
 COLOR_BLACK = (0, 0, 0)
 COLOR_CHECKPOINT = (220, 35, 20)
@@ -1169,6 +1176,8 @@ class ExploreDrone(gym.Env):
             'render_every': [1, 'any', int],
             'render_fps': [30, 'any', int],
             'rooms_layout_path': ['', 'any', str],
+            'spawn_mode': ['fixed', 'random'],
+            'spawn_index': [0, 'any', int],
         }
 
         # ─── STEP 1 GET DEFAULT VALUE ────────────────────────────────────
@@ -1230,9 +1239,15 @@ class ExploreDrone(gym.Env):
         self.render_every = max(1, assign_dict['render_every'])
         self.render_fps = max(1, assign_dict['render_fps'])
         self.rooms_layout_path = assign_dict['rooms_layout_path']
+        self.spawn_mode = assign_dict['spawn_mode']
+        self.spawn_index = assign_dict['spawn_index']
+        self.spawn_rng = np.random.default_rng()
         self.done_reason = "running"
 
     def reset(self, *, seed=None, options=None):
+        if seed is not None:
+            self.spawn_rng = np.random.default_rng(seed)
+
         # ─── FLIP MIRROR ─────────────────────────────────────────────────
         if self.env_flipmode:
             if self.env_flipped:
@@ -1268,9 +1283,19 @@ class ExploreDrone(gym.Env):
             self.drone.framecount_total = frame
 
     # def reset_drone_state(self, x=200, y=100, ang=1e-9, vel_x=0, vel_y=0, level=0):  # ang=1e-10
+    def get_rooms_spawn_pose(self):
+        poses = ROOMS_SPAWN_POSES.copy()
+        poses[:, :2] *= ROOMS_SCALE
+        if self.spawn_mode == 'random':
+            index = int(self.spawn_rng.integers(0, len(poses)))
+        else:
+            index = self.spawn_index % len(poses)
+        return poses[index]
+
     def reset_drone_state(self, x=300, y=200, ang=np.pi, vel_x=0, vel_y=0, level=0):  # ang=1e-10
         if self.env_name in ['rooms', '2d_checkpoint_exploration']:
-            x, y, ang = 165 * ROOMS_SCALE, 520 * ROOMS_SCALE, 0
+            x, y, ang = self.get_rooms_spawn_pose()
+            vel_x, vel_y = 0, 0
         elif self.env_name == 'random':
             x, y = WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2
         elif self.env_flipped:

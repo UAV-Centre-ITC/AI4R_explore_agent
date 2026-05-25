@@ -48,6 +48,8 @@ def parse_args():
         help="Optional .npz layout exported by the local layout editor.",
     )
     parser.add_argument("--entropy-coeff", type=float, default=0.1)
+    parser.add_argument("--spawn-mode", choices=["fixed", "random"], default="random")
+    parser.add_argument("--spawn-index", type=int, default=0)
     parser.add_argument(
         "--train-batch-size",
         type=int,
@@ -84,6 +86,8 @@ def get_task_limits(args):
         "gui": False,
         "render_mode": None,
         "rooms_layout_path": args.rooms_layout_path,
+        "spawn_mode": args.spawn_mode,
+        "spawn_index": args.spawn_index,
     })
     try:
         if args.reward_mode == "coverage":
@@ -114,6 +118,7 @@ def print_training_context(args, task_limits):
     print(f"  requested GPUs: {args.num_gpus}")
     print(f"  observation shape: {task_limits['observation_shape']}")
     print(f"  checkpoint layout: {task_limits['checkpoint_layout_source']}")
+    print(f"  spawn mode: {args.spawn_mode}")
     print(f"  entropy coefficient: {args.entropy_coeff}")
     if args.resume_from:
         print(f"  resume from: {args.resume_from}")
@@ -206,6 +211,8 @@ def main():
             "gui": False,
             "render_mode": None,
             "rooms_layout_path": args.rooms_layout_path,
+            "spawn_mode": args.spawn_mode,
+            "spawn_index": args.spawn_index,
         }),
     )
     config = (

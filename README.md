@@ -24,6 +24,8 @@ Your goal is to get as high a score as possible. A score above `6.0` at any poin
 
 The episode ends early if the robot crosses all `20` checkpoint gates. This prevents the policy from losing extra reward by wandering after the exploration task is complete.
 
+Training samples from a small set of fixed start poses by default. This reduces memorization of one start point while keeping the task map fixed. Rollouts use a fixed start by default so videos are easier to compare; use `--spawn-mode random` during rollout if you want to inspect behavior from the training start distribution.
+
 Use the provided PPO command as a baseline, then research and tune `entropy_coeff` and other PPO hyperparameters to reach more than `6.0` during a `1000` step rollout. After selecting the best setup, run one comparison with `entropy_coeff=0.0` and explain the behavior difference between the no-entropy version and the best setup.
 
 Experiments:
@@ -305,6 +307,8 @@ Students may adjust the training values to reach the task goal, as long as they 
 - `--num-sgd-iter`: number of optimization passes over the collected train batch. Higher values learn more from the same data, but too high can overfit to recent behavior.
 - `--entropy-coeff`: entropy coefficient used by PPO. The provided setup uses `0.1`; students should research and compare additional values before choosing the best final setting.
 - `--max-steps`: maximum training episode length. The assignment uses `400` during training and allows up to `1000` during final rollout.
+- `--spawn-mode`: start-pose selection. Training uses `random` by default, sampling from fixed safe start poses. Rollout uses `fixed` by default for repeatable videos.
+- `--spawn-index`: fixed start-pose index used when `--spawn-mode fixed`.
 - `--num-workers`: number of Ray rollout workers. Keep `0` for simple local training unless the machine has enough CPU cores.
 - `--num-gpus`: use `1` only when CUDA is available; otherwise use `0`.
 
@@ -350,6 +354,12 @@ Visual rollout:
 
 ```bash
 python run_assignment.py rollout --checkpoint tmp/ppo_entropy_010/checkpoint_best --steps 1000 --max-steps 1000 --render-fps 30
+```
+
+To inspect a trained policy from the same random start distribution used during training:
+
+```bash
+python run_assignment.py rollout --checkpoint tmp/ppo_entropy_010/checkpoint_best --steps 1000 --max-steps 1000 --render-fps 30 --spawn-mode random
 ```
 
 Terminal-only rollout:
