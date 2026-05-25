@@ -173,13 +173,14 @@ Current reward definition:
 ```text
 +0.5    crossing a new checkpoint for the first time
  0.0    revisiting an already visited checkpoint
++0.000 to +0.004 getting closer to the selected visible checkpoint
 -0.004  hovering in already explored space
 -0.020  being blocked by a wall
 -0.002  not getting closer to a visible unvisited checkpoint
 bounded wall-contact penalty, accumulating up to -0.5 between new checkpoints
 ```
 
-The bounded wall-contact penalty resets after the robot reaches a new checkpoint. The extra `-0.020` blocked-wall penalty prevents policies from pushing into walls after the bounded penalty has saturated.
+The small progress reward helps the agent learn the simple behavior of steering toward the selected red checkpoint before it has learned to cross gates reliably. The bounded wall-contact penalty resets after the robot reaches a new checkpoint. The extra `-0.020` blocked-wall penalty prevents policies from pushing into walls after the bounded penalty has saturated.
 
 Checkpoint collection uses a swept crossing test. The robot must move across the checkpoint gate; driving near a checkpoint on the same side does not count. Once all checkpoints are crossed, the episode terminates with `done_reason="all_checkpoints"`.
 
@@ -376,7 +377,7 @@ Terminal-only rollout:
 python run_assignment.py rollout --checkpoint tmp/ppo_entropy_010/checkpoint_best --steps 1000 --max-steps 1000 --no-gui
 ```
 
-The rollout prints cumulative reward, checkpoint coverage, maximum checkpoint reward, hover penalty, collision penalty, and progress penalty.
+The rollout prints cumulative reward, checkpoint coverage, maximum checkpoint reward, progress reward, hover penalty, collision penalty, and progress penalty.
 
 For assessment, use the best score reached at any time within the `1000` step rollout. It does not have to remain above `6.0` until the final frame. If the robot reaches a good score and then loses a lot of reward, try to troubleshoot the behavior, improve it where possible, and explain the failure after the rollout video.
 

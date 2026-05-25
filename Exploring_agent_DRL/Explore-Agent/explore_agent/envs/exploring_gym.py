@@ -19,6 +19,8 @@ try:
         COVERAGE_HOVER_SPEED_THRESHOLD,
         COVERAGE_PROGRESS_MARGIN,
         COVERAGE_PROGRESS_PENALTY,
+        COVERAGE_PROGRESS_REWARD_CAP,
+        COVERAGE_PROGRESS_REWARD_SCALE,
         ROBOT_WALL_CLEARANCE,
         ROOMS_SCALE,
         SENSOR_ORIGIN_WALL_BLOCK_MARGIN,
@@ -41,6 +43,8 @@ except ImportError:
         COVERAGE_HOVER_SPEED_THRESHOLD,
         COVERAGE_PROGRESS_MARGIN,
         COVERAGE_PROGRESS_PENALTY,
+        COVERAGE_PROGRESS_REWARD_CAP,
+        COVERAGE_PROGRESS_REWARD_SCALE,
         ROBOT_WALL_CLEARANCE,
         ROOMS_SCALE,
         SENSOR_ORIGIN_WALL_BLOCK_MARGIN,
@@ -575,7 +579,9 @@ class Drone:
         self.coverage_hover_penalty_total = 0.0
         self.coverage_last_hover_penalty = 0.0
         self.coverage_collision_penalty_total = 0.0
+        self.coverage_progress_reward_total = 0.0
         self.coverage_progress_penalty_total = 0.0
+        self.coverage_last_progress_reward = 0.0
         self.coverage_last_progress_penalty = 0.0
         self.coverage_target_index_previous = None
         self.coverage_target_distance_previous = None
@@ -627,6 +633,9 @@ class Drone:
         if new_hits == 0 and self.coverage_last_hover_penalty > 0:
             self.reward_step -= self.coverage_last_hover_penalty
             self.coverage_hover_penalty_total += self.coverage_last_hover_penalty
+        if new_hits == 0 and self.coverage_last_progress_reward > 0:
+            self.reward_step += self.coverage_last_progress_reward
+            self.coverage_progress_reward_total += self.coverage_last_progress_reward
         if new_hits == 0 and self.coverage_last_progress_penalty > 0:
             self.reward_step -= self.coverage_last_progress_penalty
             self.coverage_progress_penalty_total += self.coverage_last_progress_penalty
@@ -635,6 +644,7 @@ class Drone:
             self.coverage_collision_penalty_total += self.coverage_last_collision_penalty
         self.reward_total = (
             float(self.coverage_count) * self.COVERAGE_REWARD
+            + self.coverage_progress_reward_total
             - self.coverage_hover_penalty_total
             - self.coverage_collision_penalty_total
             - self.coverage_progress_penalty_total
@@ -643,6 +653,7 @@ class Drone:
 
     def update_coverage_exploration_state(self):
         self.coverage_last_hover_penalty = 0.0
+        self.coverage_last_progress_reward = 0.0
         self.coverage_last_progress_penalty = 0.0
         if self.game.reward_mode != 'coverage':
             return
@@ -657,9 +668,6 @@ class Drone:
         if self.collision_step:
             self.coverage_last_hover_penalty = max(self.coverage_last_hover_penalty, COVERAGE_BLOCKED_WALL_PENALTY)
 
-        if new_cell and not self.collision_step:
-            return
-
         candidates = self.get_unvisited_goal_candidates()
         if not candidates:
             self.coverage_target_index_previous = None
@@ -667,13 +675,15 @@ class Drone:
             return
 
         _, distance, target_index, _, visible, _, _ = candidates[0]
-        if (
-            visible
-            and self.coverage_target_index_previous == target_index
-            and self.coverage_target_distance_previous is not None
-            and distance > self.coverage_target_distance_previous - COVERAGE_PROGRESS_MARGIN
-        ):
-            self.coverage_last_progress_penalty = COVERAGE_PROGRESS_PENALTY
+        if visible and self.coverage_target_index_previous == target_index and self.coverage_target_distance_previous is not None:
+            progress = self.coverage_target_distance_previous - distance
+            if progress > COVERAGE_PROGRESS_MARGIN:
+                self.coverage_last_progress_reward = min(
+                    COVERAGE_PROGRESS_REWARD_CAP,
+                    (progress - COVERAGE_PROGRESS_MARGIN) * COVERAGE_PROGRESS_REWARD_SCALE,
+                )
+            elif not (new_cell and not self.collision_step):
+                self.coverage_last_progress_penalty = COVERAGE_PROGRESS_PENALTY
         self.coverage_target_index_previous = target_index
         self.coverage_target_distance_previous = distance
 
@@ -698,9 +708,10 @@ class Drone:
             px, py = point_on_line_segment(*goal, t)
             if self.is_goal_visible((px, py)):
                 distance = np.sqrt((self.x - px) ** 2 + (self.y - py) ** 2)
-                visible_points.append((distance, px, py))
+                center_distance = np.sqrt((midpoint[0] - px) ** 2 + (midpoint[1] - py) ** 2)
+                visible_points.append((center_distance, distance, px, py))
         if visible_points:
-            _, px, py = min(visible_points, key=lambda item: item[0])
+            _, _, px, py = min(visible_points, key=lambda item: item[0])
             return px, py, True
         return midpoint[0], midpoint[1], False
 
@@ -1415,6 +1426,8 @@ class ExploreDrone(gym.Env):
                 "max_reward": float(self.env.n_goals * self.drone.COVERAGE_REWARD),
                 "hover_penalty": float(self.drone.coverage_hover_penalty_total),
                 "last_hover_penalty": float(self.drone.coverage_last_hover_penalty),
+                "progress_reward": float(self.drone.coverage_progress_reward_total),
+                "last_progress_reward": float(self.drone.coverage_last_progress_reward),
                 "collision": bool(self.drone.collision_step),
                 "collision_count": int(self.drone.coverage_collision_count),
                 "collision_count_since_checkpoint": int(self.drone.coverage_collision_count_since_checkpoint),
