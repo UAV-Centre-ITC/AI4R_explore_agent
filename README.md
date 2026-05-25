@@ -22,12 +22,13 @@ Train a PPO agent for the `2d_checkpoint_exploration` task and report how well i
 
 Your goal is to get as high a score as possible. A score above `6.0` at any point during the allowed rollout is enough to submit the assignment, but the report must explain why the robot behaves as shown in the rollout video. The final reward may be lower if the robot later collides, stalls, or accumulates penalties. A higher and more stable score is better, especially if the behavior does not rely on repeated wall contact. For the final video and score, the rollout may run for up to `1000` steps.
 
-Start with the provided setting, `entropy_coeff=0.1`, and first try to reach more than `6.0` during a `1000` step rollout. The provided setup has been tested to reach this target with enough training and without major code changes. After that, research what entropy regularization does in PPO, run one comparison with `entropy_coeff=0.0`, and explain the behavior difference between the no-entropy version and the best setup.
+Use the provided PPO command as a baseline, then research and tune `entropy_coeff` and other PPO hyperparameters to reach more than `6.0` during a `1000` step rollout. After selecting the best setup, run one comparison with `entropy_coeff=0.0` and explain the behavior difference between the no-entropy version and the best setup.
 
 Required experiments:
 
-- Train PPO with the provided setting, `entropy_coeff=0.1`.
-- Research how `entropy_coeff` affects PPO exploration.
+- Train PPO using the provided command as a baseline.
+- Research how `entropy_coeff` and other PPO hyperparameters affect exploration and learning.
+- Tune the training setup to reach more than `6.0` during a `1000` step rollout.
 - Train one comparison run with `entropy_coeff=0.0`.
 - Compare the reward curves, final checkpoint coverage, wall-contact behavior, and visual rollout behavior.
 - Explain the behavior difference between the best setup and the `entropy_coeff=0.0` version.
@@ -361,7 +362,7 @@ For assessment, use the best score reached at any time within the `1000` step ro
 
 ## What to Discuss in the Report
 
-First report what you learned about entropy regularization in PPO and how it relates to exploration. The provided setup uses `entropy_coeff=0.1`; compare your best setup against one `entropy_coeff=0.0` run and explain the behavior difference. List any other hyperparameters changed from the provided command, such as `--iterations`, `--train-batch-size`, `--sgd-minibatch-size`, `--num-sgd-iter`, network settings, or other PPO/training options. For each change, explain why it was made and how it affected the score or rollout behavior. If another algorithm is used, report the equivalent algorithm-specific hyperparameters instead.
+First report what you learned about entropy regularization in PPO and how it relates to exploration. Then explain which entropy value and other hyperparameters you selected for the best setup, and why. Compare that best setup against one `entropy_coeff=0.0` run and explain the behavior difference. List any hyperparameters changed from the provided command, such as `--iterations`, `--train-batch-size`, `--sgd-minibatch-size`, `--num-sgd-iter`, network settings, or other PPO/training options. For each change, explain why it was made and how it affected the score or rollout behavior. If another algorithm is used, report the equivalent algorithm-specific hyperparameters instead.
 
 For the best setup and the no-entropy comparison run, discuss:
 
