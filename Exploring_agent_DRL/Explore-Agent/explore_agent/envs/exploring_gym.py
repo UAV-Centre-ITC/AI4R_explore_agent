@@ -939,7 +939,7 @@ class Drone:
                 self.coverage_collision_count_since_checkpoint = 0
                 self.coverage_collision_penalty_since_checkpoint = 0.0
             self.update_goal_vectors()
-            if self.coverage_count == self.env.n_goals:
+            if self.coverage_count >= self.env.n_goals:
                 self.game.set_done(reason="all_checkpoints")
             return
 
@@ -1316,9 +1316,17 @@ class ExploreDrone(gym.Env):
             self.drone.update_echo_vectors()
             if self.rule_collision:
                 self.drone.check_collision_goal()
-                self.drone.check_collision_echo()
-                self.drone.check_collision_env()
-            self.drone.update_coverage_exploration_state()
+                if self.done_reason == "all_checkpoints":
+                    self.drone.collision_step = False
+                    self.drone.coverage_last_collision_penalty = 0.0
+                else:
+                    self.drone.check_collision_echo()
+                    self.drone.check_collision_env()
+            if self.done_reason != "all_checkpoints":
+                self.drone.update_coverage_exploration_state()
+            else:
+                self.drone.coverage_last_hover_penalty = 0.0
+                self.drone.coverage_last_progress_penalty = 0.0
             self.drone.update_observations()
 
             # ─── EXPORT GAME STATE ───────────────────────────────────────────
@@ -1341,7 +1349,7 @@ class ExploreDrone(gym.Env):
                 # make default
                 self.drone.update_reward_continuous()
 
-            if self.rule_max_steps:
+            if self.rule_max_steps and not self.drone.done:
                 if self.drone.framecount_total >= self.max_steps:
                     truncated = True
                     self.set_done(reason="time_limit")

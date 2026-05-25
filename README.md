@@ -22,6 +22,8 @@ Train a PPO agent for the `2d_checkpoint_exploration` task and report how well i
 
 Your goal is to get as high a score as possible. A score above `6.0` at any point during the allowed rollout is enough to submit the assignment, but the report must explain why the robot behaves as shown in the rollout video. The final reward may be lower if the robot later collides, stalls, or accumulates penalties. A higher and more stable score is better, especially if the behavior does not rely on repeated wall contact. For the final video and score, the rollout may run for up to `1000` steps.
 
+The episode ends early if the robot crosses all `20` checkpoint gates. This prevents the policy from losing extra reward by wandering after the exploration task is complete.
+
 Use the provided PPO command as a baseline, then research and tune `entropy_coeff` and other PPO hyperparameters to reach more than `6.0` during a `1000` step rollout. After selecting the best setup, run one comparison with `entropy_coeff=0.0` and explain the behavior difference between the no-entropy version and the best setup.
 
 Required experiments:
@@ -177,7 +179,7 @@ bounded wall-contact penalty, accumulating up to -0.5 between new checkpoints
 
 The bounded wall-contact penalty resets after the robot reaches a new checkpoint. The extra `-0.020` blocked-wall penalty prevents policies from pushing into walls after the bounded penalty has saturated.
 
-Checkpoint collection uses a swept crossing test. The robot must move across the checkpoint gate; driving near a checkpoint on the same side does not count.
+Checkpoint collection uses a swept crossing test. The robot must move across the checkpoint gate; driving near a checkpoint on the same side does not count. Once all checkpoints are crossed, the episode terminates with `done_reason="all_checkpoints"`.
 
 ## Environment Setup
 
