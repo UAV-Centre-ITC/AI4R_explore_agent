@@ -187,10 +187,13 @@ The codebase was developed and tested on Ubuntu/Linux. The commands below use an
 
 Platform setup references:
 
+- Ubuntu/Linux Conda install guide: <https://docs.conda.io/projects/conda/en/latest/user-guide/install/linux.html>
 - Windows Conda install guide: <https://docs.conda.io/projects/conda/en/latest/user-guide/install/windows.html>
 - macOS Conda install guide: <https://docs.conda.io/projects/conda/en/latest/user-guide/install/macos.html>
 
-The assumption for every platform is that students can install Conda or Miniconda, create the environment, activate it, and then run the Python commands from this repository.
+This README is the run-command guide for the assignment. The command blocks below were tested end to end on Ubuntu/Linux. On Windows, run the same `conda` and `python` commands from Anaconda Prompt or a Conda-enabled PowerShell. On macOS, run them from Terminal after installing Conda. Shell-specific commands such as `source <path-to-miniconda>/etc/profile.d/conda.sh` apply to Linux/macOS terminals only.
+
+The assumption for every platform is that students can install Conda or Miniconda, create the environment, activate it, enter the `Exploring_agent_DRL` folder, and then run the Python commands from this repository.
 
 This assignment does not require heavy GPU compute. A good CPU is enough for training, although an NVIDIA GPU can be used if CUDA is installed correctly. Use the CPU environment unless `nvidia-smi` works and PyTorch reports CUDA as available.
 
