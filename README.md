@@ -30,7 +30,7 @@ Required experiments:
 - Research how `entropy_coeff` and other PPO hyperparameters affect exploration and learning.
 - Tune the training setup to reach more than `6.0` during a `1000` step rollout.
 - Train one comparison run with `entropy_coeff=0.0`.
-- Compare the reward curves, final checkpoint coverage, wall-contact behavior, and visual rollout behavior.
+- Compare the reward curves, checkpoint coverage, wall-contact behavior, and visual rollout behavior.
 - Explain the behavior difference between the best setup and the `entropy_coeff=0.0` version.
 
 PPO is the default supported algorithm for the assignment. Students may try another RL algorithm if they keep the map, checkpoints, and reward definition fixed. If another algorithm is used for the submitted result, the report must explain the selected algorithm and repeat the exploration-parameter comparison using that algorithm's closest equivalent to `entropy_coeff`.
@@ -49,7 +49,7 @@ Required deliverable:
 
 The walls, checkpoint gates, and reward definition define the task and must stay fixed. Students should not edit `rooms_layout.py`, `reward_config.py`, the checkpoint coordinates, the wall geometry, or the reward terms for the submitted result.
 
-Students may change the learning setup around the fixed task. Reasonable changes include PPO hyperparameters, training duration, entropy coefficient, network settings, action scaling, observation handling, and other variables that affect how the policy learns without changing the task itself. Any such change must be explained in the report and compared against the assignment setup shown in the video.
+Students may change the learning setup around the fixed task. Reasonable changes include PPO hyperparameters, training duration, entropy coefficient, network settings, action scaling, observation handling, and other variables that affect how the policy learns without changing the task itself. Any such change must be explained in the report and compared against the assignment setup.
 
 Keep submitted code readable. Comments should explain decisions that are not obvious from the code, for example why a hyperparameter was changed. Avoid large unrelated rewrites, temporary debug code, machine-specific paths, and comments that simply restate what the next line of code already says.
 
