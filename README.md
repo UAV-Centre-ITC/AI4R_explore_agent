@@ -1,6 +1,6 @@
 # AI4R 2D Checkpoint Exploration Practical Assignment
 
-This repository contains a standalone practical assignment for training a deep reinforcement learning agent to explore a 2D multi-room environment. The robot must cross as many checkpoint gates as possible within the time limit while avoiding walls and explaining the learned behavior.
+This repository contains a practical assignment for training a deep reinforcement learning agent to explore a 2D multi-room environment. The robot must cross as many checkpoint gates as possible within the time limit while avoiding walls and explaining the learned behavior.
 
 ![Pygame snapshot of the 2D checkpoint exploration task](Exploring_agent_DRL/docs/rooms_task_overview.png)
 
@@ -26,7 +26,7 @@ The episode ends early if the robot crosses all `20` checkpoint gates. This prev
 
 Use the provided PPO command as a baseline, then research and tune `entropy_coeff` and other PPO hyperparameters to reach more than `6.0` during a `1000` step rollout. After selecting the best setup, run one comparison with `entropy_coeff=0.0` and explain the behavior difference between the no-entropy version and the best setup.
 
-Required experiments:
+Experiments:
 
 - Train PPO using the provided command as a baseline.
 - Research how `entropy_coeff` and other PPO hyperparameters affect exploration and learning.
@@ -37,14 +37,14 @@ Required experiments:
 
 PPO is the default supported algorithm for the assignment. Students may try another RL algorithm if they keep the map, checkpoints, and reward definition fixed. If another algorithm is used for the submitted result, the report must explain the selected algorithm and repeat the exploration-parameter comparison using that algorithm's closest equivalent to `entropy_coeff`.
 
-Required deliverable:
+Submission:
 
 - A short video report, `5` minutes or less, showing the best rollout with the explanations listed below.
 - A short explanation of what the robot learned.
 - A comparison between the best setup and the `entropy_coeff=0.0` comparison run, discussed or presented in the video report.
 - A discussion of failure cases such as getting stuck, oscillating, missing side checkpoints, or colliding with walls.
 - The best score reached at any time within the allowed rollout length, plus the final score if it is different.
-- If the reward drops strongly after reaching a good score, a clear explanation of what went wrong and what was tried to improve it.
+- If the reward drops strongly after reaching a good score, explain what went wrong and what was tried to improve it.
 - A zip file containing the source code used for the run and the checkpoint used to record the submitted video.
 
 ## Assignment Rules
@@ -92,7 +92,7 @@ Exploring_agent_DRL/
 └── environment-gpu.yml                       # NVIDIA GPU Conda environment
 ```
 
-Students should start by reading:
+Start by reading:
 
 - `reward_config.py` for the reward values.
 - `rooms_layout.py` for walls and checkpoints.
@@ -191,7 +191,7 @@ Platform setup references:
 - Windows Conda install guide: <https://docs.conda.io/projects/conda/en/latest/user-guide/install/windows.html>
 - macOS Conda install guide: <https://docs.conda.io/projects/conda/en/latest/user-guide/install/macos.html>
 
-This README is the run-command guide for the assignment. The command blocks below were tested end to end on Ubuntu/Linux. On Windows, run the same `conda` and `python` commands from Anaconda Prompt or a Conda-enabled PowerShell. On macOS, run them from Terminal after installing Conda. Shell-specific commands such as `source <path-to-miniconda>/etc/profile.d/conda.sh` apply to Linux/macOS terminals only.
+The command blocks below were tested end to end on Ubuntu/Linux. On Windows, run the same `conda` and `python` commands from Anaconda Prompt or a Conda-enabled PowerShell. On macOS, run them from Terminal after installing Conda. Shell-specific commands such as `source <path-to-miniconda>/etc/profile.d/conda.sh` apply to Linux/macOS terminals only.
 
 The assumption for every platform is that students can install Conda or Miniconda, create the environment, activate it, enter the `Exploring_agent_DRL` folder, and then run the Python commands from this repository.
 
@@ -360,7 +360,7 @@ python run_assignment.py rollout --checkpoint tmp/ppo_entropy_010/checkpoint_bes
 
 The rollout prints cumulative reward, checkpoint coverage, maximum checkpoint reward, hover penalty, collision penalty, and progress penalty.
 
-For assessment, use the best score reached at any time within the `1000` step rollout. It does not have to remain above `6.0` until the final frame. However, if the robot reaches a good score and then loses a lot of reward, students should try to troubleshoot the behavior, improve it where possible, and explain the failure clearly after the rollout video.
+For assessment, use the best score reached at any time within the `1000` step rollout. It does not have to remain above `6.0` until the final frame. If the robot reaches a good score and then loses a lot of reward, try to troubleshoot the behavior, improve it where possible, and explain the failure after the rollout video.
 
 ## What to Discuss in the Report
 
@@ -384,9 +384,9 @@ python run_assignment.py train --iterations 500 --train-batch-size 2000 --sgd-mi
 
 Test the best checkpoint and the `entropy_coeff=0.0` checkpoint, then report what changed in the reward curve and rollout behavior. If a different RL algorithm is used, run the same kind of comparison with its closest low/no-exploration parameter and explain which parameter was changed.
 
-Keep the complete submission video at `5` minutes or less. The video only needs to show the best rollout. Discuss or present the `entropy_coeff=0.0` comparison using concise plots, tables, or spoken explanation; there is no need to include the full comparison rollout. If a short clip from the comparison rollout clearly supports a behavior pattern discussed in the report, it can be included briefly.
+Keep the submission video at `5` minutes or less. The video only needs to show the best rollout. Discuss or present the `entropy_coeff=0.0` comparison using concise plots, tables, or spoken explanation; there is no need to include the full comparison rollout. If a short clip from the comparison rollout supports a behavior pattern discussed in the report, it can be included briefly.
 
-A good format is: show the best rollout first, then briefly explain the score, the main behavior, any failure near the end, the most important training changes, and the entropy comparison.
+Suggested video structure: show the best rollout first, then briefly explain the score, the main behavior, any failure near the end, the most important training changes, and the entropy comparison.
 
 Do not report only the reward number. The assignment is about connecting the fixed reward definition, observations, and policy behavior.
 
