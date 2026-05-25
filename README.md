@@ -37,7 +37,7 @@ PPO is the default supported algorithm for the assignment. Students may try anot
 
 Required deliverable:
 
-- A short video or presentation segment showing the best rollout.
+- A short video report, `5` minutes or less, showing the best rollout.
 - A short explanation of what the robot learned.
 - A comparison between the best setup and the `entropy_coeff=0.0` comparison run, discussed or presented in the video report.
 - A discussion of failure cases such as getting stuck, oscillating, missing side checkpoints, or colliding with walls.
@@ -382,7 +382,7 @@ python run_assignment.py train --iterations 500 --train-batch-size 2000 --sgd-mi
 
 Test the best checkpoint and the `entropy_coeff=0.0` checkpoint, then report what changed in the reward curve and rollout behavior. If a different RL algorithm is used, run the same kind of comparison with its closest low/no-exploration parameter and explain which parameter was changed.
 
-Keep the complete submission video below about `5` minutes if possible. The video only needs to show the best rollout. Discuss or present the `entropy_coeff=0.0` comparison using concise plots, tables, or spoken explanation; there is no need to include the full comparison rollout. If a short clip from the comparison rollout clearly supports a behavior pattern discussed in the report, it can be included briefly.
+Keep the complete submission video at `5` minutes or less. The video only needs to show the best rollout. Discuss or present the `entropy_coeff=0.0` comparison using concise plots, tables, or spoken explanation; there is no need to include the full comparison rollout. If a short clip from the comparison rollout clearly supports a behavior pattern discussed in the report, it can be included briefly.
 
 A good format is: show the best rollout first, then briefly explain the score, the main behavior, any failure near the end, the most important training changes, and the entropy comparison.
 
