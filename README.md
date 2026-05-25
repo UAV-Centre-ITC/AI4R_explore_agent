@@ -107,7 +107,7 @@ action = [propulsion, rotation]
 ```
 
 - `propulsion > 0`: accelerate forward.
-- `propulsion < 0`: brake/reverse.
+- `propulsion < 0`: reverse.
 - `rotation > 0`: rotate right.
 - `rotation < 0`: rotate left.
 

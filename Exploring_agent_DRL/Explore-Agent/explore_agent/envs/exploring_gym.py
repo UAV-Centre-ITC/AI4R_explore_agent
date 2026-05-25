@@ -65,7 +65,7 @@ COLOR_RAY = (245, 205, 40)
 COLOR_RAY_HIT = (250, 230, 75)
 COLOR_CHECKPOINT_HIT = (255, 95, 45)
 COLOR_THRUST = (35, 180, 80)
-COLOR_BRAKE = (45, 120, 230)
+COLOR_REVERSE = (45, 120, 230)
 COLOR_TURN = (245, 170, 35)
 COLOR_VELOCITY = (50, 50, 50)
 COLOR_PANEL_BG = (255, 255, 255)
@@ -1511,10 +1511,10 @@ class ExploreDrone(gym.Env):
                 draw_arrow((x, y), vx_end, COLOR_VELOCITY, 4)
                 pygame.draw.circle(self.win, COLOR_VELOCITY, vx_end, 5)
 
-            # Acceleration/braking command indicator.
+            # Forward and reverse command indicator.
             if abs(accel) > 0.05:
-                color = COLOR_THRUST if accel > 0 else COLOR_BRAKE
-                label = "ACCEL" if accel > 0 else "BRAKE"
+                color = COLOR_THRUST if accel > 0 else COLOR_REVERSE
+                label = "ACCEL" if accel > 0 else "REVERSE"
                 forward = np.array([np.cos(heading), -np.sin(heading)])
                 command_dir = forward if accel > 0 else -forward
                 length = 58 + 28 * abs(accel) + 12 * pulse
@@ -1658,7 +1658,7 @@ class ExploreDrone(gym.Env):
                 ("ray hit", COLOR_RAY_HIT, "dot"),
                 ("checkpoint hit", COLOR_CHECKPOINT_HIT, "dot"),
                 ("accel", COLOR_THRUST, "arrow"),
-                ("brake", COLOR_BRAKE, "arrow"),
+                ("reverse", COLOR_REVERSE, "arrow"),
                 ("turn", COLOR_TURN, "arc"),
                 ("velocity", COLOR_VELOCITY, "arrow"),
             ]
