@@ -39,22 +39,24 @@ def pressed_to_action(keytouple):
 # ─── INITIALIZE AND RUN ENVIRONMENT ─────────────────────────────────────────────
 env_config = {
     'gui': True,
-    'env_name': 'rooms',
+    'render_mode': 'human',
+    'render_fps': 30,
+    'env_name': '2d_checkpoint_exploration',
     'reward_mode': 'coverage',
     # 'camera_mode': 'centered',
     # 'env_flipped': False,
     # 'env_flipmode': False,
     # 'export_frames': True,
-    'export_states': True,
-    # 'export_highscore': False,
+    'export_states': False,
     'export_string': 'human',
-    'max_steps': 400,
+    'max_steps': 1000,
+    'rule_max_steps': False,
     'gui_reward_total': True,
     'gui_echo_distances': True,
     'gui_level': True,
     'gui_velocity': True,
     'gui_goal_ang': True,
-    'gui_frames_remaining': True,
+    'gui_frames_remaining': False,
     'gui_draw_echo_points': True,
     'gui_draw_echo_vectors': True,
     'gui_draw_goal_points': True,
@@ -64,11 +66,10 @@ env = ExploreDrone(env_config)
 env.render()
 run = True
 while run:
-    env.clock.tick(30)
     get_event = pygame.event.get()
     event_to_action(get_event)
     get_pressed = list(pygame.key.get_pressed())
     action = pressed_to_action(get_pressed)
     env.step(action=action)
     env.render()
-pygame.quit()
+env.close()

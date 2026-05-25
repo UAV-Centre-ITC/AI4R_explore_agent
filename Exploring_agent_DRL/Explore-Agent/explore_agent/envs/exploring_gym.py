@@ -2,7 +2,50 @@ import gymnasium as gym
 # import gym
 import numpy as np
 import math
-ROOMS_SCALE = 1.5
+try:
+    from .reward_config import (
+        CHECKPOINT_CROSS_TOLERANCE,
+        CHECKPOINT_CROSS_TRIM,
+        CHECKPOINT_REWARD,
+        CHECKPOINT_TARGET_SAMPLES,
+        CHECKPOINT_TARGET_TRIM,
+        CHECKPOINT_VISIBILITY_WALL_MARGIN,
+        COVERAGE_BLOCKED_WALL_PENALTY,
+        COVERAGE_CELL_SIZE,
+        COVERAGE_COLLISION_PENALTY_CAP,
+        COVERAGE_COLLISION_PENALTY_RATE,
+        COVERAGE_GOAL_SLOTS,
+        COVERAGE_HOVER_PENALTY,
+        COVERAGE_HOVER_SPEED_THRESHOLD,
+        COVERAGE_PROGRESS_MARGIN,
+        COVERAGE_PROGRESS_PENALTY,
+        ROBOT_WALL_CLEARANCE,
+        ROOMS_SCALE,
+        SENSOR_ORIGIN_WALL_BLOCK_MARGIN,
+    )
+    from .rooms_layout import load_rooms_layout
+except ImportError:
+    from reward_config import (
+        CHECKPOINT_CROSS_TOLERANCE,
+        CHECKPOINT_CROSS_TRIM,
+        CHECKPOINT_REWARD,
+        CHECKPOINT_TARGET_SAMPLES,
+        CHECKPOINT_TARGET_TRIM,
+        CHECKPOINT_VISIBILITY_WALL_MARGIN,
+        COVERAGE_BLOCKED_WALL_PENALTY,
+        COVERAGE_CELL_SIZE,
+        COVERAGE_COLLISION_PENALTY_CAP,
+        COVERAGE_COLLISION_PENALTY_RATE,
+        COVERAGE_GOAL_SLOTS,
+        COVERAGE_HOVER_PENALTY,
+        COVERAGE_HOVER_SPEED_THRESHOLD,
+        COVERAGE_PROGRESS_MARGIN,
+        COVERAGE_PROGRESS_PENALTY,
+        ROBOT_WALL_CLEARANCE,
+        ROOMS_SCALE,
+        SENSOR_ORIGIN_WALL_BLOCK_MARGIN,
+    )
+    from rooms_layout import load_rooms_layout
 WINDOW_WIDTH = int(1600 * ROOMS_SCALE)
 WINDOW_HEIGHT = int(1000 * ROOMS_SCALE)
 DISPLAY_SCALE = 0.45
@@ -28,22 +71,6 @@ COLOR_VELOCITY = (50, 50, 50)
 COLOR_PANEL_BG = (255, 255, 255)
 COLOR_PANEL_BORDER = (70, 70, 70)
 COLOR_TEXT = (19, 19, 41)
-
-COVERAGE_GOAL_SLOTS = 5
-COVERAGE_CELL_SIZE = int(80 * ROOMS_SCALE)
-COVERAGE_HOVER_SPEED_THRESHOLD = 0.25
-COVERAGE_HOVER_PENALTY = 0.004
-COVERAGE_COLLISION_PENALTY_CAP = 0.5
-COVERAGE_COLLISION_PENALTY_RATE = 0.4
-COVERAGE_PROGRESS_PENALTY = 0.002
-COVERAGE_PROGRESS_MARGIN = 0.5
-CHECKPOINT_VISIBILITY_WALL_MARGIN = int(14 * ROOMS_SCALE)
-CHECKPOINT_CROSS_TOLERANCE = int(10 * ROOMS_SCALE)
-CHECKPOINT_TARGET_SAMPLES = 7
-CHECKPOINT_TARGET_TRIM = 0.12
-CHECKPOINT_CROSS_TRIM = 0.04
-
-
 
 def distance_to_line_segment(x, y, x1, y1, x2, y2, d=1):
     # Calculate the distance between the point and the line segment
@@ -285,62 +312,10 @@ class Environment:
             [375, 100, 375, 300]
         ])
 
-        self.rooms_line1_array_source = np.array([
-            # outer boundary
-            [120, 80, 1480, 80],
-            [1480, 80, 1480, 900],
-            [1480, 900, 120, 900],
-            [120, 900, 120, 80],
-
-            # left room column
-            [380, 80, 380, 330],
-            [380, 410, 380, 610],
-            [380, 690, 380, 740],
-            [380, 837, 380, 900],
-            [123, 570, 378, 570],
-            [380, 742, 380, 740],
-
-            # upper internal room with a doorway on the left
-            [580, 260, 1260, 260],
-            [1260, 260, 1260, 560],
-            [1260, 560, 580, 560],
-            [580, 260, 580, 360],
-            [580, 440, 580, 560],
-
-            # lower rooms
-            [380, 740, 599, 740],
-            [726, 742, 850, 740],
-            [980, 740, 1351, 740],
-            [820, 743, 820, 809],
-            [820, 874, 820, 900],
-            [1260, 740, 1260, 757],
-            [1261, 821, 1260, 900],
-        ], dtype=float)
-
+        self.rooms_line1_array_source, self.rooms_goals_array_source, self.rooms_layout_source_path = load_rooms_layout(
+            self.game.rooms_layout_path
+        )
         self.rooms_line2_array_source = np.zeros((0, 4))
-
-        self.rooms_goals_array_source = np.array([
-            [130, 210, 370, 210],
-            [127, 448, 370, 448],
-            [380, 330, 380, 410],
-            [380, 610, 380, 690],
-            [380, 748, 380, 832],
-            [390, 90, 576, 256],
-            [580, 360, 580, 440],
-            [820, 271, 820, 551],
-            [1060, 270, 1060, 550],
-            [1260, 560, 1470, 560],
-            [1268, 255, 1473, 89],
-            [800, 569, 800, 733],
-            [600, 740, 723, 740],
-            [853, 740, 980, 740],
-            [820, 810, 820, 871],
-            [530, 752, 530, 890],
-            [1092, 751, 1092, 891],
-            [1260, 759, 1260, 818],
-            [1352, 740, 1470, 740],
-            [131, 717, 372, 717],
-        ], dtype=float)
         self.load_level()
 
     def load_level(self):
@@ -358,7 +333,7 @@ class Environment:
             line2 = self.L2_line2_array_source.copy()
             goals = self.L2_goals_array_source.copy()
 
-        elif self.game.env_name == 'rooms':
+        elif self.game.env_name in ['rooms', '2d_checkpoint_exploration']:
             line1 = self.rooms_line1_array_source.copy()
             line2 = self.rooms_line2_array_source.copy()
             goals = self.rooms_goals_array_source.copy()
@@ -533,7 +508,8 @@ class Drone:
     # ROT_VEL = 1.28
     # ROT_VEL = 0.64
     # ROT_VEL = 0.32
-    ROT_VEL = 0.08
+    ROT_VEL = 0.12
+    TURN_VELOCITY_ALIGNMENT = 0.45
     # ROT_VEL = 0.04
     # ACCELERATION = 1.0
     ACCELERATION = 0.35 * ROOMS_SCALE
@@ -546,7 +522,7 @@ class Drone:
     N_ECHO = 7  # must be odd
     # N_ECHO = 15  # must be odd
     # N_ECHO = 31  # must be odd
-    COVERAGE_REWARD = 0.5
+    COVERAGE_REWARD = CHECKPOINT_REWARD
 
     def __init__(self, game, env):
         self.game = game
@@ -661,13 +637,18 @@ class Drone:
         if self.game.reward_mode != 'coverage':
             return
         cell = (int(self.x // COVERAGE_CELL_SIZE), int(self.y // COVERAGE_CELL_SIZE))
-        if cell not in self.coverage_explored_cells:
+        new_cell = cell not in self.coverage_explored_cells
+        if new_cell:
             self.coverage_explored_cells.add(cell)
-            return
 
         speed = np.sqrt(self.vel_x ** 2 + self.vel_y ** 2)
         if speed < COVERAGE_HOVER_SPEED_THRESHOLD:
             self.coverage_last_hover_penalty = COVERAGE_HOVER_PENALTY
+        if self.collision_step:
+            self.coverage_last_hover_penalty = max(self.coverage_last_hover_penalty, COVERAGE_BLOCKED_WALL_PENALTY)
+
+        if new_cell and not self.collision_step:
+            return
 
         candidates = self.get_unvisited_goal_candidates()
         if not candidates:
@@ -727,6 +708,9 @@ class Drone:
         return self.is_point_visible(point, margin=CHECKPOINT_VISIBILITY_WALL_MARGIN)
 
     def is_point_visible(self, point, margin=3):
+        for wall in self.env.level_collision_vectors:
+            if point_to_line_segment_distance(self.x, self.y, *wall) <= SENSOR_ORIGIN_WALL_BLOCK_MARGIN:
+                return False
         distance_to_goal = np.sqrt((self.x - point[0]) ** 2 + (self.y - point[1]) ** 2)
         sight_line = [self.x, self.y, point[0], point[1]]
         for wall in self.env.level_collision_vectors:
@@ -819,12 +803,21 @@ class Drone:
         self.echo_vectors = matrix
 
     def rotate(self, rotate):  # input: action1
-        self.ang = self.ang + self.ROT_VEL * rotate
+        heading_delta = self.ROT_VEL * rotate
+        self.ang = self.ang + heading_delta
         # get angular in range of -pi,pi
         if self.ang > np.pi:
             self.ang = self.ang - 2 * np.pi
         if self.ang < -np.pi:
             self.ang = self.ang + 2 * np.pi
+        if abs(heading_delta) > 1e-6:
+            velocity_delta = heading_delta * self.TURN_VELOCITY_ALIGNMENT
+            cos_delta = np.cos(velocity_delta)
+            sin_delta = np.sin(velocity_delta)
+            # Screen y is positive downward, so this rotates velocity in heading coordinates.
+            vel_x = self.vel_x * cos_delta + self.vel_y * sin_delta
+            vel_y = -self.vel_x * sin_delta + self.vel_y * cos_delta
+            self.vel_x, self.vel_y = vel_x, vel_y
 
     def accelerate(self, accelerate):  # input: action0
         self.vel_x = self.DRAG * (self.vel_x + self.ACCELERATION * accelerate * np.cos(self.ang))
@@ -971,7 +964,8 @@ class Drone:
         self.coverage_last_collision_penalty = 0.0
         for line in self.env.level_collision_vectors:
             result = line_intersect(*self.movement_vector, *line)
-            if result is not None:
+            too_close = line_segment_distance(*self.movement_vector, *line) <= ROBOT_WALL_CLEARANCE
+            if result is not None or too_close:
                 if self.game.reward_mode == 'coverage' and not self.game.coverage_collision_ends_episode:
                     self.collision_step = True
                     self.coverage_collision_count += 1
@@ -986,6 +980,8 @@ class Drone:
                     self.x, self.y = self.x_previous, self.y_previous
                     self.vel_x, self.vel_y = 0.0, 0.0
                     self.movement_vector = [self.x, self.y, self.x, self.y]
+                    self.update_echo_vectors()
+                    self.check_collision_echo()
                 else:
                     self.game.set_done(reason="collision")
                 break
@@ -1006,6 +1002,18 @@ class Drone:
             candidate_goal_indices = np.arange(self.env.n_goals)
 
         n = self.env.level_collision_vectors.shape[0]
+        for wall in self.env.level_collision_vectors:
+            if point_to_line_segment_distance(self.x, self.y, *wall) <= SENSOR_ORIGIN_WALL_BLOCK_MARGIN:
+                closest = closest_point_on_line_segment(self.x, self.y, *wall)
+                points[:, :] = closest
+                distances[:] = 0.0
+                self.echo_collision_points = points
+                self.echo_checkpoint_points = checkpoint_points
+                self.echo_checkpoint_indices = checkpoint_indices
+                self.echo_checkpoint_distances = checkpoint_distances
+                self.echo_collision_distances_interp = np.interp(distances, [0, ECHO_MAX_DISTANCE], [-1, 1])
+                return
+
         for i in range(self.N_ECHO):
             found = False
             line1 = self.echo_vectors[i, :]
@@ -1052,9 +1060,17 @@ class Drone:
 
 
 class ExploreDrone(gym.Env):
+    metadata = {"render_modes": [None, "human", "rgb_array"], "render_fps": 30}
+
     def __init__(self, env_config={}):
         self.parse_env_config(env_config)
         self.win = None
+        self.display_surface = None
+        self.clock = None
+        self.pygame_initialized = False
+        self.display_initialized = False
+        self.render_count = 0
+        self._last_rgb_array = None
         self.action_space = gym.spaces.Box(
             low=-1.,
             high=1.,
@@ -1095,7 +1111,16 @@ class ExploreDrone(gym.Env):
             # the first value in the list is the default value
             'gui': [True, False],
             'camera_mode': ['fixed', 'centered'],
-            'env_name': ['default', 'empty', 'level1', 'level2', 'random', 'playground', 'rooms'],
+            'env_name': [
+                'default',
+                'empty',
+                'level1',
+                'level2',
+                'random',
+                'playground',
+                'rooms',
+                '2d_checkpoint_exploration',
+            ],
             'env_random_length': [50, 'any', int],  # length of randomly generated environment
             'env_flipped': [False, True],  # activates normal environment, flipped
             'env_flipmode': [False, True],  # activates flip mode. Each reset() flips env
@@ -1121,6 +1146,10 @@ class ExploreDrone(gym.Env):
             'gui_draw_goal_all': [True, False],
             'gui_draw_goal_next': [True, False],
             'gui_draw_goal_points': [False, True],
+            'render_mode': [None, 'human', 'rgb_array'],
+            'render_every': [1, 'any', int],
+            'render_fps': [30, 'any', int],
+            'rooms_layout_path': ['', 'any', str],
         }
 
         # ─── STEP 1 GET DEFAULT VALUE ────────────────────────────────────
@@ -1176,6 +1205,12 @@ class ExploreDrone(gym.Env):
         self.gui_draw_goal_all = assign_dict['gui_draw_goal_all']
         self.gui_draw_goal_next = assign_dict['gui_draw_goal_next']
         self.gui_draw_goal_points = assign_dict['gui_draw_goal_points']
+        self.render_mode = assign_dict['render_mode']
+        if self.render_mode is None and self.gui and 'render_mode' not in env_config:
+            self.render_mode = 'human'
+        self.render_every = max(1, assign_dict['render_every'])
+        self.render_fps = max(1, assign_dict['render_fps'])
+        self.rooms_layout_path = assign_dict['rooms_layout_path']
         self.done_reason = "running"
 
     def reset(self, *, seed=None, options=None):
@@ -1215,8 +1250,8 @@ class ExploreDrone(gym.Env):
 
     # def reset_drone_state(self, x=200, y=100, ang=1e-9, vel_x=0, vel_y=0, level=0):  # ang=1e-10
     def reset_drone_state(self, x=300, y=200, ang=np.pi, vel_x=0, vel_y=0, level=0):  # ang=1e-10
-        if self.env_name == 'rooms':
-            x, y, ang = 240 * ROOMS_SCALE, 830 * ROOMS_SCALE, 0
+        if self.env_name in ['rooms', '2d_checkpoint_exploration']:
+            x, y, ang = 165 * ROOMS_SCALE, 520 * ROOMS_SCALE, 0
         elif self.env_name == 'random':
             x, y = WINDOW_WIDTH // 2, WINDOW_HEIGHT // 2
         elif self.env_flipped:
@@ -1250,6 +1285,7 @@ class ExploreDrone(gym.Env):
                                  '-'.join([self.session_id, str(int(self.drone.reward_total)).zfill(4)])
                                  ])
             filenamepath = os.path.join('exported_states', filename)
+            os.makedirs(os.path.dirname(filenamepath), exist_ok=True)
             np.save(filenamepath, self.statematrix)
 
     def step(self, action=None):
@@ -1276,13 +1312,13 @@ class ExploreDrone(gym.Env):
         # ─── PERFORM STEP ───────────────────-─────────────────────────────
         if not self.drone.done:
             self.drone.move(tmp_action)
-            self.drone.update_coverage_exploration_state()
             # print(f"[STEP 0] action={action}, pos=({self.drone.x:.2f},{self.drone.y:.2f}), vel=({self.drone.vel_x:.3f},{self.drone.vel_y:.3f}), reward={self.drone.reward_step:.4f}")
             self.drone.update_echo_vectors()
             if self.rule_collision:
                 self.drone.check_collision_goal()
                 self.drone.check_collision_echo()
                 self.drone.check_collision_env()
+            self.drone.update_coverage_exploration_state()
             self.drone.update_observations()
 
             # ─── EXPORT GAME STATE ───────────────────────────────────────────
@@ -1344,14 +1380,31 @@ class ExploreDrone(gym.Env):
         return self.get_observation(), reward, done, truncated,  info
 
     def render(self, mode=None):
-        # initialize pygame only when render is called once
+        render_mode = self.render_mode if mode is None else mode
+        if render_mode is None:
+            return None
+        if render_mode not in ('human', 'rgb_array'):
+            raise ValueError("render mode must be None, 'human', or 'rgb_array'")
+
+        self.render_count += 1
+        if self.render_every > 1 and (self.render_count - 1) % self.render_every != 0:
+            if render_mode == 'rgb_array':
+                return self._last_rgb_array
+            return None
+
+        # initialize pygame only when rendering is requested
         import pygame
         import os
         from PIL import Image
         middle_echo_index = (self.drone.N_ECHO - 1) // 2
 
-        def init_renderer(self):
-            pygame.init()
+        def init_renderer(self, render_mode):
+            if render_mode == 'human':
+                pygame.init()
+            else:
+                pygame.font.init()
+            self.pygame_initialized = True
+
             def load_robot_image(filename):
                 image = pygame.transform.scale2x(pygame.image.load(os.path.join('imgs', filename)))
                 width, height = image.get_size()
@@ -1375,11 +1428,16 @@ class ExploreDrone(gym.Env):
                 pygame.image.load(os.path.join('imgs', 'white_bg.jpg')),
                 (WINDOW_WIDTH, WINDOW_HEIGHT),
             )
-            pygame.display.set_caption("Exploring robot")
-            self.clock = pygame.time.Clock()
-            self.display_surface = pygame.display.set_mode(
-                (DISPLAY_WIDTH, DISPLAY_HEIGHT))
-            self.win = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT)).convert()
+            self.clock = pygame.time.Clock() if render_mode == 'human' else None
+            if render_mode == 'human':
+                pygame.display.set_caption("Exploring robot")
+                self.display_surface = pygame.display.set_mode(
+                    (DISPLAY_WIDTH, DISPLAY_HEIGHT))
+                self.display_initialized = True
+            else:
+                self.display_surface = None
+                self.display_initialized = False
+            self.win = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
 
             if self.export_frames:
                 self.image3d = np.ndarray(
@@ -1658,7 +1716,14 @@ class ExploreDrone(gym.Env):
 
         # ─── INIT RENDERER ───────────────────────────────────────────────
         if self.win is None:
-            init_renderer(self)
+            init_renderer(self, render_mode)
+        elif render_mode == 'human' and not self.display_initialized:
+            pygame.init()
+            pygame.display.set_caption("Exploring robot")
+            self.display_surface = pygame.display.set_mode(
+                (DISPLAY_WIDTH, DISPLAY_HEIGHT))
+            self.clock = pygame.time.Clock()
+            self.display_initialized = True
 
         # ─── RECURING RENDERING ──────────────────────────────────────────
         self.win.blit(self.BG_IMG, (0, 0))
@@ -1700,23 +1765,29 @@ class ExploreDrone(gym.Env):
             draw_legend()
 
         # ─── RENDER GAME ─────────────────────────────────────────────────
-        pygame.event.pump()
-        if DISPLAY_SCALE == 1.0:
-            self.display_surface.blit(self.win, (0, 0))
-        else:
-            pygame.transform.smoothscale(
+        frame_surface = self.win
+        if DISPLAY_SCALE != 1.0:
+            frame_surface = pygame.transform.smoothscale(
                 self.win,
                 (DISPLAY_WIDTH, DISPLAY_HEIGHT),
-                self.display_surface,
             )
-        pygame.display.update()
+
+        if render_mode == 'human':
+            pygame.event.pump()
+            if DISPLAY_SCALE == 1.0:
+                self.display_surface.blit(self.win, (0, 0))
+            else:
+                self.display_surface.blit(frame_surface, (0, 0))
+            pygame.display.update()
+            self.clock.tick(self.render_fps)
+
+        if render_mode == 'rgb_array' or self.export_frames:
+            frame_array = pygame.surfarray.array3d(frame_surface)
+            self._last_rgb_array = np.transpose(frame_array, axes=[1, 0, 2])
 
         # ─── EXPORT GAME FRAMES ──────────────────────────────────────────
         if self.export_frames:
-            pygame.pixelcopy.surface_to_array(
-                self.image3d, self.display_surface)
-            self.image3dT = np.transpose(self.image3d, axes=[1, 0, 2])
-            im = Image.fromarray(self.image3dT)  # monochromatic image
+            im = Image.fromarray(self._last_rgb_array)  # monochromatic image
             imrgb = im.convert('RGB')  # color image
 
             filename = ''.join([
@@ -1726,7 +1797,23 @@ class ExploreDrone(gym.Env):
                 str(self.drone.framecount_total).zfill(5),
                 '.jpg'])
             filenamepath = os.path.join('exported_frames', filename)
+            os.makedirs(os.path.dirname(filenamepath), exist_ok=True)
             imrgb.save(filenamepath)
+
+        if render_mode == 'rgb_array':
+            return self._last_rgb_array
+        return None
+
+    def close(self):
+        if self.pygame_initialized:
+            import pygame
+            pygame.quit()
+        self.win = None
+        self.display_surface = None
+        self.clock = None
+        self.pygame_initialized = False
+        self.display_initialized = False
+        self._last_rgb_array = None
 
     def get_drone_state(self):
         return np.array([

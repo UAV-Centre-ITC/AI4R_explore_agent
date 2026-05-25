@@ -1,175 +1,203 @@
-# AI4R Explore Agent Practical Assignment
+# AI4R 2D Checkpoint Exploration Practical Assignment
 
-This repository contains the code for the AI for Autonomous Robotics practical on training a deep reinforcement learning agent for a 2D mobile robot exploration task.
+This repository contains a standalone practical assignment for training a deep reinforcement learning agent to explore a 2D multi-room environment. The robot must cross as many checkpoint gates as possible within the time limit while avoiding walls and explaining the learned behavior.
 
-The exercise uses a custom Gymnasium environment, Ray RLlib, PyTorch, and Pygame. The main task is a multi-room exploration challenge trained with PPO.
+![Pygame snapshot of the 2D checkpoint exploration task](Exploring_agent_DRL/docs/rooms_task_overview.png)
 
-## Assignment Overview
+The figure above is a screenshot from the current Pygame renderer. The yellow observation rays stop at the nearest visible wall or checkpoint intersection; they should not pass through black walls. Red gates are unvisited checkpoints and green gates are already visited checkpoints.
 
-The goal is to train a simulated mobile robot to explore a small multi-room map while avoiding walls. Each room contains checkpoint gates. The agent receives reward for crossing new checkpoints, and the episode has a fixed time budget.
+## Assignment Guide
 
-A good policy should visit as many unique checkpoints as possible before the time limit. A poor policy may collide, spin near the start, or repeatedly revisit the same area.
+The student handout is available as a PDF:
 
-Students should use the exercise to connect reinforcement learning concepts from the lectures to an implemented DRL workflow:
+[AI4R Explore Agent Assignment Guide](Exploring_agent_DRL/docs/AI4R_explore_agent_assignment.pdf)
 
-- reading the environment and agent code;
-- understanding the action space, observation space, reward function, and training loop;
-- training a DRL policy in the custom environment;
-- testing the trained policy visually;
-- changing selected hyperparameters and explaining their effect on exploration behavior.
+## Student Assignment
 
-The original assignment handout is included here:
-
-- [AIAR_RL_practical_assignment_1-4-a.pdf](AIAR_RL_practical_assignment_1-4-a.pdf)
-
-## Learning Objectives
-
-After completing the practical, students should be able to:
-
-- explain how a custom robot environment is represented using the Gymnasium API;
-- describe how observations, actions, rewards, and episode termination are implemented in code;
-- train and evaluate a DRL agent using Ray RLlib;
-- interpret the effect of selected hyperparameters on reward curves and rollout behavior;
-- present the final policy behavior using short videos, plots, or screenshots.
-
-## Environment
-
-The robot moves in a 2D continuous environment with walls, rooms, door openings, and checkpoint gates. The default `rooms` map has a side alcove, an upper internal room, and lower compartments connected by narrow openings. The room layout is scaled larger than the original racing-track exercise so the robot has clearer visual clearance from walls during inspection. The environment follows the standard Gymnasium interaction pattern:
-
-- `reset()` initializes an episode;
-- `step(action)` applies one action and returns the next observation, reward, and termination flags;
-- `render()` visualizes the robot and map using Pygame.
-
-The main environment implementation is:
+Train a PPO agent for the `2d_checkpoint_exploration` task and report how well it behaves. The maximum checkpoint reward is:
 
 ```text
-Exploring_agent_DRL/Explore-Agent/explore_agent/envs/exploring_gym.py
+20 checkpoints x 0.5 reward = 10.0
 ```
+
+Your goal is to get as high a score as possible. A score above `6.0` at any point during the allowed rollout is enough to submit the assignment, but the report must explain why the robot behaves as shown in the rollout video. The final reward may be lower if the robot later collides, stalls, or accumulates penalties. A higher and more stable score is better, especially if the behavior does not rely on repeated wall contact. For the final video and score, the rollout may run for up to `1000` steps.
+
+Start with the default setting, `entropy_coeff=0.01`, and first try to reach more than `6.0` during a `1000` step rollout. The provided setup has been tested to reach this target with enough training and without major code changes. After that, change the entropy coefficient for the comparison experiment and explain the behavior in the video report.
+
+Required experiments:
+
+- Train PPO with `entropy_coeff=0.0`.
+- Train PPO with `entropy_coeff=0.01` as the default setting.
+- Train PPO with `entropy_coeff=0.1`.
+- Compare the reward curves, final checkpoint coverage, wall-contact behavior, and visual rollout behavior.
+- Explain how the different entropy values changed the observed behavior.
+
+PPO is the default supported algorithm for the assignment. Students may try another RL algorithm if they keep the map, checkpoints, and reward definition fixed. If another algorithm is used for the submitted result, the report must explain the selected algorithm and repeat the exploration-parameter comparison using that algorithm's closest equivalent to `entropy_coeff`.
+
+Required deliverable:
+
+- A short video or presentation segment showing the best rollout.
+- A short explanation of what the robot learned.
+- A comparison of all three required entropy settings: `0.0`, `0.01`, and `0.1`, discussed or presented in the video report.
+- A discussion of failure cases such as getting stuck, oscillating, missing side checkpoints, or colliding with walls.
+- The best score reached at any time within the allowed rollout length, plus the final score if it is different.
+- If the reward drops strongly after reaching a good score, a clear explanation of what went wrong and what was tried to improve it.
+- A zip file containing the source code used for the run and the checkpoint used to record the submitted video.
+
+## Assignment Rules
+
+The walls, checkpoint gates, and reward definition define the task and must stay fixed. Students should not edit `rooms_layout.py`, `reward_config.py`, the checkpoint coordinates, the wall geometry, or the reward terms for the submitted result.
+
+Students may change the learning setup around the fixed task. Reasonable changes include PPO hyperparameters, training duration, entropy coefficient, network settings, action scaling, observation handling, and other variables that affect how the policy learns without changing the task itself. Any such change must be explained in the report and compared against the assignment setup shown in the video.
+
+Keep submitted code readable. Comments should explain decisions that are not obvious from the code, for example why a hyperparameter was changed. Avoid large unrelated rewrites, temporary debug code, machine-specific paths, and comments that simply restate what the next line of code already says.
+
+## Environment Summary
+
+The robot moves in a continuous 2D map with rooms, walls, doorways, and checkpoint gates. Walls are black, unvisited checkpoints are red, and visited checkpoints turn green. Yellow rays show range observations. The robot receives a checkpoint reward only when it crosses a previously unvisited checkpoint gate.
+
+![Observation and reward flow](Exploring_agent_DRL/docs/observation_reward_flow.png)
+
+The environment follows the Gymnasium API:
+
+```python
+obs, info = env.reset()
+obs, reward, terminated, truncated, info = env.step(action)
+env.render()
+env.close()
+```
+
+## Code Organization
+
+The assignment code is split so students can read the environment, reward definition, and run scripts separately:
+
+```text
+Exploring_agent_DRL/
+├── run_assignment.py                         # simple wrapper for check/train/rollout
+├── Explore_PPO_agent_training.py             # PPO training script
+├── Explore_DDPG_agent_training.py            # optional DDPG training script
+├── explore_agent_rollout.py                  # checkpoint rollout and visualization
+├── performance_sanity_check.py               # headless stepping/render sanity check
+├── docs/
+│   ├── AI4R_explore_agent_assignment.pdf
+│   ├── rooms_task_overview.png
+│   ├── original_observation_space.png
+│   └── observation_reward_flow.png
+├── Explore-Agent/explore_agent/envs/
+│   ├── exploring_gym.py                      # Gymnasium environment and robot dynamics
+│   ├── rooms_layout.py                       # fixed map and checkpoint layout
+│   ├── reward_config.py                      # reward constants and task constants
+│   └── start_human.py                        # manual driving/debugging
+├── environment.yml                           # CPU Conda environment
+└── environment-gpu.yml                       # NVIDIA GPU Conda environment
+```
+
+Students should start by reading:
+
+- `reward_config.py` for the reward values.
+- `rooms_layout.py` for walls and checkpoints.
+- `exploring_gym.py` for observations, dynamics, collisions, and Gymnasium `step()`.
+- `Explore_PPO_agent_training.py` for PPO configuration and logging.
+- `Explore_DDPG_agent_training.py` only if you want to try an optional deterministic actor-critic baseline.
 
 ## Action Space
 
-The agent controls the robot using two continuous actions:
+The policy outputs two continuous actions:
 
 ```text
 action = [propulsion, rotation]
 ```
 
-- `propulsion > 0`: move forward;
-- `propulsion < 0`: move backward;
-- `rotation > 0`: rotate right;
+- `propulsion > 0`: accelerate forward.
+- `propulsion < 0`: brake/reverse.
+- `rotation > 0`: rotate right.
 - `rotation < 0`: rotate left.
 
-Both action values are clipped to the range `[-1, 1]`.
-
-The rooms task uses damped motion with a capped speed so the robot can still turn into narrow gates. Braking uses the negative propulsion action and is intentionally strong enough to slow the robot before checkpoints and walls.
+Both action values are clipped to `[-1, 1]`. The robot has damped motion, limited speed, steering authority, and a wall-clearance collision radius so the visible robot body does not overlap walls.
 
 ## Observation Space
 
-The observation vector contains range-like clearance measurements and robot motion/goal information:
+The default `coverage` task has observation shape `(27,)`.
+
+It includes:
+
+- `7` range rays around the robot.
+- Robot speed.
+- Angle between heading and velocity.
+- Angle to the currently selected checkpoint target.
+- `5` unvisited checkpoint slots.
+- Overall checkpoint progress.
+- Stall time since the last new checkpoint.
+
+The first `10` values describe the robot's local motion and target direction:
 
 ```text
-observation = [l1, ..., l7, v, alpha, beta]
+[l1, l2, l3, l4, l5, l6, l7, v, alpha, beta]
 ```
 
-where:
+![Observation-space illustration](Exploring_agent_DRL/docs/original_observation_space.png)
 
-- `l1` to `l7` are clearance values measured at different angles around the robot;
-- `v` is the robot speed magnitude;
-- `alpha` is the angle between the robot heading and its velocity direction;
-- `beta` is the angle between the robot heading and the next goal/checkpoint direction.
+- `l1..l7`: normalized wall-clearance distances from the range rays.
+- `v`: normalized robot speed.
+- `alpha`: normalized angle between the robot heading and its current velocity direction.
+- `beta`: normalized angle between the robot heading and the selected checkpoint target direction.
 
-In the default `coverage` task, the observation is extended with five unvisited checkpoint slots. Each slot contains the relative angle, distance, and visibility flag for a reachable visible point sampled along one nearby unvisited checkpoint. The final two values report overall checkpoint progress and how long the robot has gone without collecting a new checkpoint. This is different from the older racing-track task, where one next checkpoint was enough. Sampling the checkpoint target keeps the policy from aiming at endpoints close to walls or already visited gates.
+The remaining observation values describe several visible unvisited checkpoint candidates, so the policy can choose between multiple exploration directions instead of only reacting to one target.
 
-The observation values are normalized to match the declared Gymnasium observation space. For the default coverage task the observation shape is `(27,)`.
-
-## Reward
-
-The default task uses `reward_mode="coverage"`. Each checkpoint gives reward only the first time it is crossed:
+Each checkpoint slot contains:
 
 ```text
-+0.5 for each new checkpoint
- 0.0 for revisiting an already collected checkpoint
-hovering in explored space gives -0.004 per step
-not approaching a visible unvisited checkpoint gives -0.002 per step
-wall-contact penalty starts at -0.2 and converges to -0.5 cumulatively between checkpoints
+[relative angle, distance, visible flag]
 ```
 
-The coverage task also adds penalties when the robot hovers in an already visited coarse map cell or fails to approach a visible unvisited checkpoint. If both conditions hold, the combined shaping penalty is `-0.006` per step, so it becomes visible during long 1000-step experiments without overpowering the `+0.5` checkpoint reward. Checkpoint collection uses a swept crossing test: the robot must move from one side of the checkpoint gate to the other, with a small tolerance for doorway-corner geometry. Driving nearby on the same side does not give reward. Wall contact blocks the robot and adds a bounded escalating penalty, but it does not end the default rooms episode. The wall-contact penalty state resets after a new checkpoint is reached. This discourages standing still or repeatedly driving into walls, while the checkpoint count remains the main evaluation score.
+The visible flag is only positive when the checkpoint can be seen without a wall blocking line of sight. If the robot overlaps or is too close to a wall, rays are blocked and checkpoints behind the wall are not visible.
 
-The episode ends when the robot collects all checkpoints or reaches the step limit. The default `rooms` map has 20 checkpoints. Each checkpoint is worth `0.5`, so the checkpoint reward maximum is `10.0`. The training return can be lower if the robot hits walls or spends time hovering without exploring. The default challenge uses `max_steps=400`, which corresponds to about 20 seconds in the visual rollout with the default sleep value.
+## Reward Function
 
-## Student Task
-
-Train a DRL agent to maximize checkpoint coverage in the multi-room environment. PPO is provided as the default algorithm, but other off-the-shelf RLlib algorithms can also be tested.
-
-Recommended experiments:
-
-- train PPO on the `rooms` environment with `coverage` reward;
-- vary one or two selected hyperparameters;
-- compare reward curves, checkpoint coverage, and rollout behavior;
-- test whether the trained policy enters multiple rooms;
-- document failure cases such as collisions, oscillations, or getting stuck;
-- keep the challenge map fixed for fair comparison.
-
-The main PPO training script is:
+The default reward mode is:
 
 ```text
-Exploring_agent_DRL/Explore_PPO_agent_training.py
+reward_mode="coverage"
 ```
 
-The rollout script for testing a trained checkpoint is:
+Reward and shaping values are defined in:
 
 ```text
-Exploring_agent_DRL/explore_agent_rollout.py
+Exploring_agent_DRL/Explore-Agent/explore_agent/envs/reward_config.py
 ```
 
-## Deliverable
-
-Prepare a short video or presentation segment showing:
-
-- which DRL algorithm was used;
-- which hyperparameters or environment settings were changed;
-- training evidence such as reward curves or logs;
-- visual rollout of the trained robot;
-- how many checkpoints the robot reached within the time limit;
-- examples of both successful and challenging test cases.
-
-The assignment handout specifies a short video report rather than a written report.
-
-## Repository Layout
+Current reward definition:
 
 ```text
-.
-├── AIAR_RL_practical_assignment_1-4-a.pdf
-├── Exploring_agent_DRL/
-│   ├── README.md
-│   ├── environment.yml
-│   ├── environment-gpu.yml
-│   ├── Explore_PPO_agent_training.py
-│   ├── Explore_DDPG_agent_training.py
-│   ├── explore_agent_rollout.py
-│   ├── Explore-Agent/
-│   │   └── explore_agent/envs/
-│   └── imgs/
++0.5    crossing a new checkpoint for the first time
+ 0.0    revisiting an already visited checkpoint
+-0.004  hovering in already explored space
+-0.020  being blocked by a wall
+-0.002  not getting closer to a visible unvisited checkpoint
+bounded wall-contact penalty, accumulating up to -0.5 between new checkpoints
 ```
 
-## Platform Support
+The bounded wall-contact penalty resets after the robot reaches a new checkpoint. The extra `-0.020` blocked-wall penalty prevents policies from pushing into walls after the bounded penalty has saturated.
 
-| Platform | CPU training | NVIDIA GPU training | Notes |
-| --- | --- | --- | --- |
-| Windows 10/11 | Supported | Supported with NVIDIA GPU and working drivers | Use Anaconda Prompt or Miniconda Prompt. |
-| Ubuntu/Linux | Supported | Supported with NVIDIA GPU and working drivers | Suitable for desktop or lab machines. |
-| macOS Intel or Apple Silicon | Supported in CPU mode | Not supported through CUDA | Apple Metal/MPS is not configured for this exercise. |
+Checkpoint collection uses a swept crossing test. The robot must move across the checkpoint gate; driving near a checkpoint on the same side does not count.
 
-Use the CPU environment unless an NVIDIA GPU is available and `nvidia-smi` works.
+## Environment Setup
 
-## Setup
+The codebase was developed and tested on Ubuntu/Linux. The commands below use an Ubuntu/Linux shell. Windows and macOS should also work through Conda in theory, but they were not tested end to end for this release.
 
-Clone the repository and enter the exercise folder:
+Platform setup references:
+
+- Windows Conda install guide: <https://docs.conda.io/projects/conda/en/latest/user-guide/install/windows.html>
+- macOS Conda install guide: <https://docs.conda.io/projects/conda/en/latest/user-guide/install/macos.html>
+
+The assumption for every platform is that students can install Conda or Miniconda, create the environment, activate it, and then run the Python commands from this repository.
+
+This assignment does not require heavy GPU compute. A good CPU is enough for training, although an NVIDIA GPU can be used if CUDA is installed correctly. Use the CPU environment unless `nvidia-smi` works and PyTorch reports CUDA as available.
+
+From the repository root:
 
 ```bash
-git clone https://github.com/UAV-Centre-ITC/AI4R_explore_agent.git
-cd AI4R_explore_agent/Exploring_agent_DRL
+cd Exploring_agent_DRL
 ```
 
 CPU environment:
@@ -186,36 +214,37 @@ conda env create -f environment-gpu.yml
 conda activate aiar-rl-explore-gpu
 ```
 
-Before using the GPU environment, check that CUDA is visible:
+If `conda` is not available in a normal Linux terminal, initialize it first. Replace `<path-to-miniconda>` with the actual Miniconda or Anaconda installation path on that machine:
+
+```bash
+source <path-to-miniconda>/etc/profile.d/conda.sh
+conda activate aiar-rl-explore-gpu
+```
+
+For a default Miniconda installation in the home folder, this is often:
+
+```bash
+source ~/miniconda3/etc/profile.d/conda.sh
+```
+
+Check CUDA before using GPU training:
 
 ```bash
 nvidia-smi
-python -c "import torch; print(torch.cuda.is_available())"
+python -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'no CUDA')"
 ```
 
-Detailed Windows, Ubuntu/Linux, and macOS setup notes are provided in:
+Use `--num-gpus 1` only when CUDA is available.
 
-- [Exploring_agent_DRL/README.md](Exploring_agent_DRL/README.md)
+## Quick Checks
 
-## Quick Check
-
-Run this after activating the Conda environment:
+Headless environment check:
 
 ```bash
-python -c "from explore_agent.envs.exploring_gym import ExploreDrone; env = ExploreDrone({'gui': False, 'env_name': 'rooms', 'reward_mode': 'coverage', 'max_steps': 5}); obs, _ = env.reset(); print('observation shape:', obs.shape); obs, reward, terminated, truncated, info = env.step([0.0, 0.0]); print(round(float(reward), 4), terminated, truncated, info)"
+python run_assignment.py check --steps 1000
 ```
 
-## Manual Driving
-
-Use manual control first to inspect the map and robot behavior.
-
-Windows:
-
-```bat
-python Explore-Agent\explore_agent\envs\start_human.py
-```
-
-Ubuntu/Linux/macOS:
+Manual driving:
 
 ```bash
 python Explore-Agent/explore_agent/envs/start_human.py
@@ -223,74 +252,145 @@ python Explore-Agent/explore_agent/envs/start_human.py
 
 Use the arrow keys to drive. Press `r` to reset.
 
-## Train PPO
+## Training Commands
 
-Short CPU run:
-
-```bash
-python Explore_PPO_agent_training.py --iterations 20 --num-workers 0 --num-gpus 0 --env-name rooms --reward-mode coverage --max-steps 400
-```
-
-Longer CPU run:
-
-```bash
-python Explore_PPO_agent_training.py --iterations 500 --num-workers 0 --num-gpus 0 --env-name rooms --reward-mode coverage --max-steps 400
-```
-
-GPU run:
-
-```bash
-python Explore_PPO_agent_training.py --iterations 500 --num-workers 0 --num-gpus 1 --env-name rooms --reward-mode coverage --max-steps 400
-```
-
-Checkpoints are written to:
+Default PPO. Start here:
 
 ```text
-tmp/ppo_rooms/
+entropy_coeff = 0.01
 ```
 
-The best checkpoint is saved at:
+```bash
+python run_assignment.py train --iterations 500 --train-batch-size 2000 --sgd-minibatch-size 256 --num-sgd-iter 10 --num-workers 0 --num-gpus 0 --entropy-coeff 0.01 --checkpoint-dir tmp/ppo_entropy_001
+```
+
+GPU version, if CUDA is available:
+
+```bash
+python run_assignment.py train --iterations 500 --train-batch-size 2000 --sgd-minibatch-size 256 --num-sgd-iter 10 --num-workers 0 --num-gpus 1 --entropy-coeff 0.01 --checkpoint-dir tmp/ppo_entropy_001
+```
+
+You can also call the training script directly:
+
+```bash
+python Explore_PPO_agent_training.py --iterations 500 --num-workers 0 --num-gpus 0 --env-name 2d_checkpoint_exploration --reward-mode coverage --max-steps 400 --entropy-coeff 0.01 --train-batch-size 2000 --checkpoint-dir tmp/ppo_entropy_001
+```
+
+### Training Length per PPO Iteration
+
+`--iterations` controls how many PPO updates are run. `--train-batch-size` controls how many environment steps are collected before each update. With the default values, training uses roughly:
 
 ```text
-tmp/ppo_rooms/checkpoint_best
+500 iterations x 2000 environment steps per iteration = 1,000,000 sampled steps
 ```
 
-## Test a Trained Policy
+Students may change this value if they want longer or shorter PPO updates:
+
+```bash
+python run_assignment.py train --iterations 500 --train-batch-size 4000 --num-workers 0 --num-gpus 0 --entropy-coeff 0.01 --checkpoint-dir tmp/ppo_entropy_001_batch4000
+```
+
+A larger batch gives PPO a more stable update but each iteration takes longer. A smaller batch gives faster iteration feedback but usually noisier learning.
+
+### PPO Parameters Students Can Tune
+
+Students may adjust the training values to reach the task goal, as long as they keep the map geometry fixed and explain the result.
+
+- `--iterations`: number of collect-and-learn cycles. More iterations usually gives the policy more chances to improve.
+- `--train-batch-size`: number of environment steps collected before one PPO update. The default `2000` is about five full `400` step training episodes. Larger values are more stable but slower per iteration.
+- `--sgd-minibatch-size`: number of samples used in each optimizer minibatch after the full train batch is collected. It should normally be smaller than `--train-batch-size`.
+- `--num-sgd-iter`: number of optimization passes over the collected train batch. Higher values learn more from the same data, but too high can overfit to recent behavior.
+- `--entropy-coeff`: entropy coefficient used by PPO. The required report comparison uses `0.0`, `0.01`, and `0.1`.
+- `--max-steps`: maximum training episode length. The assignment uses `400` during training and allows up to `1000` during final rollout.
+- `--num-workers`: number of Ray rollout workers. Keep `0` for simple local training unless the machine has enough CPU cores.
+- `--num-gpus`: use `1` only when CUDA is available; otherwise use `0`.
+
+### Optional RL Algorithms
+
+PPO is the recommended route and the provided report commands are written for PPO. Students may use another RL algorithm if they keep `rooms_layout.py`, `reward_config.py`, the checkpoint gates, the walls, and the reward terms unchanged.
+
+For the required exploration comparison, use the closest parameter for the selected algorithm:
+
+| Algorithm | Exploration parameter to compare |
+| --- | --- |
+| PPO | `entropy_coeff` |
+| A3C | `entropy_coeff` in RLlib, although A3C is deprecated in the installed RLlib version |
+| SAC | entropy temperature settings, such as `target_entropy` and `initial_alpha`, not PPO-style `entropy_coeff` |
+| DDPG | no entropy coefficient; compare action-noise settings such as `--exploration-initial-scale`, `--exploration-final-scale`, and `--exploration-scale-timesteps` |
+| TD3 | no entropy coefficient; compare action-noise settings if a TD3 trainer is added |
+
+Optional DDPG run:
+
+```bash
+python run_assignment.py train-ddpg --iterations 1000 --num-workers 0 --num-gpus 0 --checkpoint-dir tmp/ddpg_2d_checkpoint_exploration
+```
+
+DDPG checkpoints can be tested with the same rollout command by changing the checkpoint path:
+
+```bash
+python run_assignment.py rollout --checkpoint tmp/ddpg_2d_checkpoint_exploration/checkpoint_best --steps 1000 --max-steps 1000 --render-fps 30
+```
+
+### Continue Training from a Checkpoint
+
+To continue from an existing checkpoint, pass `--resume-from` and write new checkpoints to a new folder:
+
+```bash
+python run_assignment.py train --iterations 300 --resume-from tmp/ppo_entropy_001/checkpoint_best --checkpoint-dir tmp/ppo_entropy_001_resume --num-workers 0 --num-gpus 0 --entropy-coeff 0.01 --train-batch-size 2000
+```
+
+Use the same fixed map when resuming. If the map, observation format, or reward mode is changed, old checkpoints may not be compatible or may behave differently from the submitted setup.
+
+## Testing a Trained Agent
 
 Visual rollout:
 
 ```bash
-python explore_agent_rollout.py --checkpoint tmp/ppo_rooms/checkpoint_best --env-name rooms --reward-mode coverage --max-steps 400 --gui
+python run_assignment.py rollout --checkpoint tmp/ppo_entropy_001/checkpoint_best --steps 1000 --max-steps 1000 --render-fps 30
 ```
 
-Terminal-only rollout check:
+Terminal-only rollout:
 
 ```bash
-python explore_agent_rollout.py --checkpoint tmp/ppo_rooms/checkpoint_best --env-name rooms --reward-mode coverage --max-steps 400 --steps 400 --sleep 0 --no-gui
+python run_assignment.py rollout --checkpoint tmp/ppo_entropy_001/checkpoint_best --steps 1000 --max-steps 1000 --no-gui
 ```
 
-The rollout prints the cumulative reward, checkpoint coverage, checkpoint reward maximum, and accumulated shaping penalties.
-In the Pygame view, walls are black, unvisited checkpoints are red, and visited checkpoints turn green. Yellow rays show the robot's distance sensors. Rays stop at the nearest visible unvisited checkpoint only when no wall blocks the line of sight, so the visual sensor overlay does not show checkpoints through walls. The GUI includes a legend for the map, sensor rays, ray hits, and motion overlays. Live labels near the robot show whether the policy is accelerating, braking, or turning; green/blue arrows pulse in the commanded acceleration or braking direction, orange arcs pulse for turn commands, and the dark arrow shows the actual velocity direction. The simulator renders the full environment internally and displays it in a smaller `1080 x 675` window for laptop screens.
+The rollout prints cumulative reward, checkpoint coverage, maximum checkpoint reward, hover penalty, collision penalty, and progress penalty.
 
-## Optional Baseline Task
+For assessment, use the best score reached at any time within the `1000` step rollout. It does not have to remain above `6.0` until the final frame. However, if the robot reaches a good score and then loses a lot of reward, students should try to troubleshoot the behavior, improve it where possible, and explain the failure clearly after the rollout video.
 
-The older lap-following task is still available as a baseline:
+## What to Discuss in the Report
+
+First report the best result obtained with the default PPO entropy setting, `entropy_coeff=0.01`, unless a different algorithm was selected. List the hyperparameters changed from the provided command, such as `--iterations`, `--train-batch-size`, `--sgd-minibatch-size`, `--num-sgd-iter`, network settings, or other PPO/training options. For each change, explain why it was made and how it affected the score or rollout behavior. If another algorithm is used, report the equivalent algorithm-specific hyperparameters instead.
+
+For each entropy setting, discuss:
+
+- best reward during the rollout, final reward, and checkpoint count;
+- whether the robot enters multiple rooms;
+- whether it slows down enough to cross side checkpoints;
+- whether it gets stuck near walls;
+- how much wall-contact penalty appears;
+- how the behavior changes across the three entropy values;
+- which entropy setting gave the best rollout and why.
+
+For PPO, use the best default `entropy_coeff=0.01` run as the middle case in the entropy comparison. Then run the two additional comparison cases with the same training setup, changing only `--entropy-coeff` and `--checkpoint-dir`:
 
 ```bash
-python Explore_PPO_agent_training.py --iterations 500 --num-workers 0 --num-gpus 0 --env-name playground --reward-mode continuous --max-steps 1000 --checkpoint-dir tmp/ppo_playground
+python run_assignment.py train --iterations 500 --train-batch-size 2000 --sgd-minibatch-size 256 --num-sgd-iter 10 --num-workers 0 --num-gpus 0 --entropy-coeff 0.0 --checkpoint-dir tmp/ppo_entropy_000
+python run_assignment.py train --iterations 500 --train-batch-size 2000 --sgd-minibatch-size 256 --num-sgd-iter 10 --num-workers 0 --num-gpus 0 --entropy-coeff 0.1 --checkpoint-dir tmp/ppo_entropy_010
 ```
 
-This can be used to compare path following against unordered room exploration.
+Test each trained checkpoint, including the already trained default `0.01` checkpoint, and report what changed in the reward curve and rollout video. If a different RL algorithm is used, run the same kind of comparison with its exploration parameter and explain which parameter was changed.
+
+Keep the complete submission video below about `5` minutes if possible. The video only needs to show the best rollout. Discuss or present the entropy-coefficient results using concise plots, tables, or spoken explanation; there is no need to include a full rollout for every entropy run. If a short clip from another rollout clearly supports a behavior pattern discussed in the report, it can be included briefly.
+
+A good format is: show the best rollout first, then briefly explain the score, the main behavior, any failure near the end, the most important training changes, and the entropy comparison.
+
+Do not report only the reward number. The assignment is about connecting the fixed reward definition, observations, and policy behavior.
 
 ## TensorBoard
 
-Ray writes training logs under the user `ray_results` folder.
-
-Windows:
-
-```bat
-python -m tensorboard.main --logdir %USERPROFILE%\ray_results
-```
+Ray writes logs under the user `ray_results` folder by default.
 
 Ubuntu/Linux/macOS:
 
@@ -298,4 +398,10 @@ Ubuntu/Linux/macOS:
 python -m tensorboard.main --logdir ~/ray_results
 ```
 
-Open the TensorBoard URL printed in the terminal.
+Windows:
+
+```bat
+python -m tensorboard.main --logdir %USERPROFILE%\ray_results
+```
+
+Open the TensorBoard URL printed in the terminal and compare reward curves across entropy settings.

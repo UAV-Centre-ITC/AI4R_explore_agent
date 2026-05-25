@@ -45,9 +45,6 @@ exported_states/
 checkpoint*.tar.gz
 *_checkpoint*.tar.gz
 
-# Local notes
-CHANGELOG.md
-
 # OS/editor files
 .DS_Store
 Thumbs.db
